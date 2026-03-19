@@ -1,0 +1,38 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: mensageria_db
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: trataz
+    ports:
+      - "3307:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-psecret"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    environment:
+      PORTA: 3000
+      NIVEL_LOG: info
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USUARIO: root
+      DB_SENHA: secret
+      DB_NOME: trataz
+      DB_SYNC: "true"
+      WORKER_ATIVO: "true"
+      WORKER_INTERVALO_MS: 60000
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+volumes:
+  dbdata:
