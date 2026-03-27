@@ -19,6 +19,25 @@ export class WhatsappServico {
     }
   }
 
+  normalizarDestinoWhatsApp(telefone: string): string {
+    const semPrefixo = telefone.replace(/^whatsapp:/i, '').trim();
+    const apenasDigitos = semPrefixo.replace(/\D/g, '');
+
+    if (!apenasDigitos) {
+      return 'whatsapp:';
+    }
+
+    if (semPrefixo.startsWith('+')) {
+      return `whatsapp:+${apenasDigitos}`;
+    }
+
+    if (apenasDigitos.startsWith('55')) {
+      return `whatsapp:+${apenasDigitos}`;
+    }
+
+    return `whatsapp:+55${apenasDigitos}`;
+  }
+
   async enviarBoasVindasWhatsApp(paraWhatsApp: string, email: string, primeiroNome: string, senhaTemporaria?: string | null): Promise<EnvioResultado> {
     if (!this.estaConfigurado()) {
       this.avisarNaoConfigurado();
@@ -29,16 +48,17 @@ export class WhatsappServico {
     }
 
     try {
+      const destinoNormalizado = this.normalizarDestinoWhatsApp(paraWhatsApp);
       const corpo = `Ola ${primeiroNome}! Bem-vindo(a) ao Trataz. Seu email: ${email}.` +
         (senhaTemporaria ? ` Senha temporaria: ${senhaTemporaria}` : '');
 
       const msg = await cliente.messages.create({
         from: ambiente.twilio.origemWhatsApp,
-        to: paraWhatsApp,
+        to: destinoNormalizado,
         body: corpo
       });
 
-      logger.info({ sid: msg.sid }, 'WhatsApp de boas-vindas enviado');
+      logger.info({ sid: msg.sid, destinoNormalizado }, 'WhatsApp de boas-vindas enviado');
       return {
         status: 'success',
         reason: 'WhatsApp de boas-vindas enviado com sucesso',
@@ -65,13 +85,14 @@ export class WhatsappServico {
     }
 
     try {
+      const destinoNormalizado = this.normalizarDestinoWhatsApp(paraWhatsApp);
       const corpo = `Ola ${nomePaciente}! Lembrete do seu tratamento "${nomeTratamento}" com ${nomeProfissional}.`;
       const msg = await cliente.messages.create({
         from: ambiente.twilio.origemWhatsApp,
-        to: paraWhatsApp,
+        to: destinoNormalizado,
         body: corpo
       });
-      logger.info({ sid: msg.sid }, 'WhatsApp de lembrete de tratamento enviado');
+      logger.info({ sid: msg.sid, destinoNormalizado }, 'WhatsApp de lembrete de tratamento enviado');
       return {
         status: 'success',
         reason: 'WhatsApp de lembrete de tratamento enviado com sucesso',

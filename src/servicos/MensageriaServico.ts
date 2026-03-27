@@ -632,16 +632,17 @@ export class MensageriaServico {
         }
 
         if (paciente.telefone) {
+          const destinoWhatsapp = this.whatsappServico.normalizarDestinoWhatsApp(paciente.telefone);
           notificacaoEnviada = await this.processarCanal({
             entityType: 'patient',
             entityId: paciente.id,
             notificationType: 'welcome_patient',
             channel: 'whatsapp',
-            destination: paciente.telefone,
+            destination: destinoWhatsapp,
             reason: 'Boas-vindas de paciente por WhatsApp',
             contextoLog: { entidade: 'paciente', pacienteId: paciente.id },
             executarEnvio: () => this.whatsappServico.enviarBoasVindasWhatsApp(
-              `whatsapp:${paciente.telefone as string}`,
+              paciente.telefone as string,
               paciente.email ?? '',
               primeiroNome,
               paciente.senhaTemporaria ?? undefined
@@ -687,16 +688,17 @@ export class MensageriaServico {
         }
 
         if (profissional.telefone) {
+          const destinoWhatsapp = this.whatsappServico.normalizarDestinoWhatsApp(profissional.telefone);
           notificacaoEnviada = await this.processarCanal({
             entityType: 'professional',
             entityId: profissional.id,
             notificationType: 'welcome_professional',
             channel: 'whatsapp',
-            destination: profissional.telefone,
+            destination: destinoWhatsapp,
             reason: 'Boas-vindas de profissional por WhatsApp',
             contextoLog: { entidade: 'profissional', profissionalId: profissional.id },
             executarEnvio: () => this.whatsappServico.enviarBoasVindasWhatsApp(
-              `whatsapp:${profissional.telefone as string}`,
+              profissional.telefone as string,
               profissional.email ?? '',
               primeiroNome,
               profissional.senhaTemporaria ?? undefined
@@ -748,16 +750,17 @@ export class MensageriaServico {
         }
 
         if (telefonePaciente) {
+          const destinoWhatsapp = this.whatsappServico.normalizarDestinoWhatsApp(telefonePaciente);
           notificacaoEnviada = await this.processarCanal({
             entityType: 'treatment',
             entityId: tratamento.id,
             notificationType: 'treatment_reminder',
             channel: 'whatsapp',
-            destination: telefonePaciente,
+            destination: destinoWhatsapp,
             reason: 'Lembrete de tratamento por WhatsApp',
             contextoLog: { entidade: 'tratamento', tratamentoId: tratamento.id },
             executarEnvio: () => this.whatsappServico.enviarLembreteTratamento(
-              `whatsapp:${telefonePaciente}`,
+              telefonePaciente,
               nomePaciente,
               tratamento.nome,
               nomeProfissional
