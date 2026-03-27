@@ -19,7 +19,35 @@ import { iniciarWorkerMensageria } from './processos/iniciarWorker';
       logger.info(`Servidor ouvindo em http://0.0.0.0:${ambiente.porta}`);
     });
   } catch (erro: unknown) {
-    logger.error({ erro }, 'Falha na inicializacao');
+    if (erro instanceof Error) {
+      logger.error({
+        erro: {
+          nome: erro.name,
+          mensagem: erro.message,
+          stack: erro.stack
+        },
+        ambiente: {
+          porta: ambiente.porta,
+          possuiDatabaseUrl: Boolean(ambiente.databaseUrl),
+          dbHost: ambiente.db.host,
+          dbPort: ambiente.db.port,
+          dbNome: ambiente.db.nome,
+          workerAtivo: ambiente.worker.ativo
+        }
+      }, 'Falha na inicializacao');
+    } else {
+      logger.error({
+        erro,
+        ambiente: {
+          porta: ambiente.porta,
+          possuiDatabaseUrl: Boolean(ambiente.databaseUrl),
+          dbHost: ambiente.db.host,
+          dbPort: ambiente.db.port,
+          dbNome: ambiente.db.nome,
+          workerAtivo: ambiente.worker.ativo
+        }
+      }, 'Falha na inicializacao');
+    }
     process.exit(1);
   }
 })();
