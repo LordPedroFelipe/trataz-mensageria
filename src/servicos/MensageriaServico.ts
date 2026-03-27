@@ -1,12 +1,21 @@
+import { Clinica } from '../dominio/entidades/Clinica';
 import { PacienteRepositorio } from '../infra/repositorios/PacienteRepositorio';
+import { ClinicaRepositorio } from '../infra/repositorios/ClinicaRepositorio';
+import { PasswordResetRepositorio } from '../infra/repositorios/PasswordResetRepositorio';
 import { ProfissionalRepositorio } from '../infra/repositorios/ProfissionalRepositorio';
+import { ReminderRepositorio } from '../infra/repositorios/ReminderRepositorio';
 import { TratamentoRepositorio } from '../infra/repositorios/TratamentoRepositorio';
 import { ListarHistoricoInput, MessageDispatchAuditRepositorio } from '../infra/repositorios/MessageDispatchAuditRepositorio';
 import { EmailServico } from './EmailServico';
 import { WhatsappServico } from './WhatsappServico';
 import { logger } from '../config/logger';
+import { ambiente } from '../config/ambiente';
 import { CanalNotificacao, EnvioResultado, EntityType, NotificationType } from '../compartilhado/tipos/mensageria';
 import { MessageDispatchAudit } from '../dominio/entidades/MessageDispatchAudit';
+import { Paciente } from '../dominio/entidades/Paciente';
+import { PasswordReset } from '../dominio/entidades/PasswordReset';
+import { Profissional } from '../dominio/entidades/Profissional';
+import { Reminder } from '../dominio/entidades/Reminder';
 
 interface ItemDryRun {
   tipo: EntityType;
@@ -27,6 +36,9 @@ export interface ResultadoDryRunMensageria {
     pacientes: number;
     profissionais: number;
     tratamentos: number;
+    clinicas: number;
+    passwordResets: number;
+    reminders: number;
     itens: number;
   };
   itens: ItemDryRun[];
@@ -43,10 +55,31 @@ interface ProcessarCanalInput {
   executarEnvio: () => Promise<EnvioResultado>;
 }
 
+interface ReminderOcorrencia {
+  reminderId: number;
+  entityId: string;
+  dateKey: string;
+  horario: string;
+  destination: string;
+  nomePaciente: string;
+  nomeTratamento: string;
+  nomeProfissional: string;
+  nomeConteudo: string | null;
+}
+
+interface ZonedParts {
+  dateKey: string;
+  timeKey: string;
+  weekdayIndex: number;
+}
+
 export class MensageriaServico {
   private pacienteRepo = new PacienteRepositorio();
   private profissionalRepo = new ProfissionalRepositorio();
+  private clinicaRepo = new ClinicaRepositorio();
   private tratamentoRepo = new TratamentoRepositorio();
+  private passwordResetRepo = new PasswordResetRepositorio();
+  private reminderRepo = new ReminderRepositorio();
   private auditRepo = new MessageDispatchAuditRepositorio();
   private emailServico = new EmailServico();
   private whatsappServico = new WhatsappServico();
@@ -55,69 +88,7 @@ export class MensageriaServico {
 
   async dryRun(): Promise<ResultadoDryRunMensageria> {
     const geradoEm = new Date().toISOString();
-    const pacientes = await this.pacienteRepo.buscarNovosApos(this.watermarkISO);
-    const profissionais = await this.profissionalRepo.buscarNovosApos(this.watermarkISO);
-    const tratamentos = await this.tratamentoRepo.buscarNovosApos(this.watermarkISO);
-
-    const itens: ItemDryRun[] = [];
-
-    for (const paciente of pacientes) {
-      const canais = await this.obterCanaisPendentes('patient', paciente.id, 'welcome_patient', paciente.email, paciente.telefone);
-      if (canais.length === 0) {
-        continue;
-      }
-
-      itens.push({
-        tipo: 'patient' as const,
-        id: paciente.id,
-        nomeReferencia: [paciente.primeiroNome, paciente.sobrenome].filter(Boolean).join(' ').trim() || 'Paciente',
-        canais,
-        destinos: {
-          email: paciente.email,
-          telefone: paciente.telefone
-        },
-        motivo: 'Boas-vindas de paciente pendente'
-      });
-    }
-
-    for (const profissional of profissionais) {
-      const canais = await this.obterCanaisPendentes('professional', profissional.id, 'welcome_professional', profissional.email, profissional.telefone);
-      if (canais.length === 0) {
-        continue;
-      }
-
-      itens.push({
-        tipo: 'professional' as const,
-        id: profissional.id,
-        nomeReferencia: profissional.nomeCompleto || 'Profissional',
-        canais,
-        destinos: {
-          email: profissional.email,
-          telefone: profissional.telefone
-        },
-        motivo: 'Boas-vindas de profissional pendente'
-      });
-    }
-
-    for (const tratamento of tratamentos) {
-      const canais = await this.obterCanaisPendentes('treatment', tratamento.id, 'treatment_reminder', tratamento.paciente.email, tratamento.paciente.telefone);
-      if (canais.length === 0) {
-        continue;
-      }
-
-      itens.push({
-        tipo: 'treatment' as const,
-        id: tratamento.id,
-        nomeReferencia: tratamento.nome,
-        canais,
-        destinos: {
-          email: tratamento.paciente.email,
-          telefone: tratamento.paciente.telefone
-        },
-        motivo: `Lembrete de tratamento para ${tratamento.paciente.primeiroNome}`
-      });
-    }
-
+    const itens = await this.gerarItensDryRun();
     const resultado: ResultadoDryRunMensageria = {
       watermarkISO: this.watermarkISO,
       geradoEm,
@@ -125,6 +96,9 @@ export class MensageriaServico {
         pacientes: itens.filter((item) => item.tipo === 'patient').length,
         profissionais: itens.filter((item) => item.tipo === 'professional').length,
         tratamentos: itens.filter((item) => item.tipo === 'treatment').length,
+        clinicas: itens.filter((item) => item.tipo === 'clinic').length,
+        passwordResets: itens.filter((item) => item.tipo === 'password_reset').length,
+        reminders: itens.filter((item) => item.tipo === 'reminder').length,
         itens: itens.length
       },
       itens
@@ -144,6 +118,101 @@ export class MensageriaServico {
       total: itens.length,
       itens
     };
+  }
+
+  async processarPasswordResetPorId(id: string): Promise<boolean> {
+    const reset = await this.passwordResetRepo.buscarPorId(id);
+    return reset ? this.processarPasswordReset(reset) : false;
+  }
+
+  async processarSenhaTemporariaPorEntidade(entityType: 'patient' | 'professional' | 'clinic', id: number): Promise<boolean> {
+    if (entityType === 'patient') {
+      const paciente = await this.pacienteRepo.buscarPorId(id);
+      return paciente ? this.processarSenhaTemporariaPaciente(paciente) : false;
+    }
+
+    if (entityType === 'professional') {
+      const profissional = await this.profissionalRepo.buscarPorId(id);
+      return profissional ? this.processarSenhaTemporariaProfissional(profissional) : false;
+    }
+
+    const clinica = await this.clinicaRepo.buscarPorId(id);
+    return clinica ? this.processarSenhaTemporariaClinica(clinica) : false;
+  }
+
+  async executarCicloManual(): Promise<void> {
+    await this.ciclo();
+  }
+
+  private async gerarItensDryRun(): Promise<ItemDryRun[]> {
+    const [pacientes, profissionais, tratamentos, pacientesSenha, profissionaisSenha, clinicasSenha, resets, reminders] = await Promise.all([
+      this.pacienteRepo.buscarNovosApos(this.watermarkISO),
+      this.profissionalRepo.buscarNovosApos(this.watermarkISO),
+      this.tratamentoRepo.buscarNovosApos(this.watermarkISO),
+      this.pacienteRepo.buscarComSenhaTemporariaAtualizadaApos(this.watermarkISO),
+      this.profissionalRepo.buscarComSenhaTemporariaAtualizadaApos(this.watermarkISO),
+      this.clinicaRepo.buscarComSenhaTemporariaAtualizadaApos(this.watermarkISO),
+      this.passwordResetRepo.buscarPendentesApos(this.watermarkISO),
+      this.reminderRepo.listarAtivos()
+    ]);
+
+    const itens: ItemDryRun[] = [];
+
+    for (const paciente of pacientes) {
+      const canais = await this.obterCanaisPendentes('patient', paciente.id, 'welcome_patient', paciente.email, paciente.telefone);
+      if (canais.length > 0) {
+        itens.push({ tipo: 'patient', id: paciente.id, nomeReferencia: this.nomePaciente(paciente), canais, destinos: { email: paciente.email, telefone: paciente.telefone }, motivo: 'Boas-vindas de paciente pendente' });
+      }
+    }
+
+    for (const profissional of profissionais) {
+      const canais = await this.obterCanaisPendentes('professional', profissional.id, 'welcome_professional', profissional.email, profissional.telefone);
+      if (canais.length > 0) {
+        itens.push({ tipo: 'professional', id: profissional.id, nomeReferencia: profissional.nomeCompleto || 'Profissional', canais, destinos: { email: profissional.email, telefone: profissional.telefone }, motivo: 'Boas-vindas de profissional pendente' });
+      }
+    }
+
+    for (const tratamento of tratamentos) {
+      const canais = await this.obterCanaisPendentes('treatment', tratamento.id, 'treatment_reminder', tratamento.paciente.email, tratamento.paciente.telefone);
+      if (canais.length > 0) {
+        itens.push({ tipo: 'treatment', id: tratamento.id, nomeReferencia: tratamento.nome, canais, destinos: { email: tratamento.paciente.email, telefone: tratamento.paciente.telefone }, motivo: `Lembrete inicial de tratamento para ${tratamento.paciente.primeiroNome}` });
+      }
+    }
+
+    for (const paciente of pacientesSenha) {
+      if (paciente.email && paciente.senhaTemporaria && !await this.auditRepo.existeSucesso('patient', this.chaveSenhaTemporaria(paciente.id, paciente.senhaTemporaria), 'temp_password_patient', 'email')) {
+        itens.push({ tipo: 'patient', id: this.chaveSenhaTemporaria(paciente.id, paciente.senhaTemporaria), nomeReferencia: this.nomePaciente(paciente), canais: ['email'], destinos: { email: paciente.email, telefone: null }, motivo: 'Senha temporaria de paciente pendente' });
+      }
+    }
+
+    for (const profissional of profissionaisSenha) {
+      if (profissional.email && profissional.senhaTemporaria && !await this.auditRepo.existeSucesso('professional', this.chaveSenhaTemporaria(profissional.id, profissional.senhaTemporaria), 'temp_password_professional', 'email')) {
+        itens.push({ tipo: 'professional', id: this.chaveSenhaTemporaria(profissional.id, profissional.senhaTemporaria), nomeReferencia: profissional.nomeCompleto || 'Profissional', canais: ['email'], destinos: { email: profissional.email, telefone: null }, motivo: 'Senha temporaria de profissional pendente' });
+      }
+    }
+
+    for (const clinica of clinicasSenha) {
+      if (clinica.email && clinica.senhaTemporaria && !await this.auditRepo.existeSucesso('clinic', this.chaveSenhaTemporaria(clinica.id, clinica.senhaTemporaria), 'temp_password_clinic', 'email')) {
+        itens.push({ tipo: 'clinic', id: this.chaveSenhaTemporaria(clinica.id, clinica.senhaTemporaria), nomeReferencia: clinica.nome, canais: ['email'], destinos: { email: clinica.email, telefone: clinica.telefone }, motivo: 'Senha temporaria de clinica pendente' });
+      }
+    }
+
+    for (const reset of resets) {
+      if (!await this.auditRepo.existeSucesso('password_reset', reset.id, 'password_reset', 'email')) {
+        itens.push({ tipo: 'password_reset', id: reset.id, nomeReferencia: reset.email, canais: ['email'], destinos: { email: reset.email, telefone: null }, motivo: 'Email de recuperacao de senha pendente' });
+      }
+    }
+
+    const remindersDue = await this.listarOcorrenciasDue(reminders, this.obterJanelaInicial(), new Date());
+    for (const ocorrencia of remindersDue) {
+      itens.push({ tipo: 'reminder', id: ocorrencia.entityId, nomeReferencia: ocorrencia.nomeTratamento, canais: ['email'], destinos: { email: ocorrencia.destination, telefone: null }, motivo: `Lembrete recorrente do tratamento para ${ocorrencia.nomePaciente} em ${ocorrencia.dateKey} ${ocorrencia.horario}` });
+    }
+
+    return itens;
+  }
+
+  private obterJanelaInicial(): Date {
+    return new Date(this.watermarkISO);
   }
 
   private async obterCanaisPendentes(entityType: EntityType, entityId: string | number, notificationType: NotificationType, email: string | null, telefone: string | null): Promise<CanalNotificacao[]> {
@@ -229,13 +298,299 @@ export class MensageriaServico {
     logger.warn({ ...contexto, errorMessage: resultado.errorMessage ?? null }, 'Canal ignorado e auditoria registrada');
   }
 
-  private async registrarMarcacaoLog(entidade: 'paciente' | 'profissional' | 'tratamento', id: number, marcado: boolean): Promise<void> {
+  private async registrarMarcacaoLog(entidade: 'paciente' | 'profissional' | 'tratamento' | 'clinica', id: number, marcado: boolean): Promise<void> {
     if (marcado) {
       logger.info({ entidade, id }, 'Registro marcado como notificado na tabela de origem');
       return;
     }
 
     logger.info({ entidade, id }, 'Tabela de auditoria passou a ser a fonte de verdade do envio');
+  }
+
+  private nomePaciente(paciente: Paciente): string {
+    return [paciente.primeiroNome, paciente.sobrenome].filter(Boolean).join(' ').trim() || 'Paciente';
+  }
+
+  private primeiroNomeProfissional(profissional: Profissional): string {
+    return profissional.nomeCompleto?.split(' ')[0] || 'Profissional';
+  }
+
+  private chaveSenhaTemporaria(id: number, senhaTemporaria: string): string {
+    return `${id}:${senhaTemporaria}`;
+  }
+
+  private extrairPrimeiroNomeDoEmail(email: string): string {
+    const prefixo = email.split('@')[0] ?? 'Usuario';
+    const normalizado = prefixo.replace(/[._-]+/g, ' ').trim();
+    return normalizado.length > 0 ? normalizado : 'Usuario';
+  }
+
+  private async processarSenhaTemporariaPaciente(paciente: Paciente): Promise<boolean> {
+    if (!paciente.email || !paciente.senhaTemporaria) {
+      return false;
+    }
+
+    const sucesso = await this.processarCanal({
+      entityType: 'patient',
+      entityId: this.chaveSenhaTemporaria(paciente.id, paciente.senhaTemporaria),
+      notificationType: 'temp_password_patient',
+      channel: 'email',
+      destination: paciente.email,
+      reason: 'Senha temporaria de paciente por email',
+      contextoLog: { entidade: 'paciente', pacienteId: paciente.id },
+      executarEnvio: () => this.emailServico.enviarSenhaTemporaria(
+        paciente.email as string,
+        paciente.primeiroNome || 'Paciente',
+        paciente.senhaTemporaria as string
+      )
+    });
+
+    if (sucesso) {
+      const marcado = await this.pacienteRepo.marcarSenhaTemporariaEnviada(paciente.id);
+      await this.registrarMarcacaoLog('paciente', paciente.id, marcado);
+    }
+
+    return sucesso;
+  }
+
+  private async processarSenhaTemporariaProfissional(profissional: Profissional): Promise<boolean> {
+    if (!profissional.email || !profissional.senhaTemporaria) {
+      return false;
+    }
+
+    const sucesso = await this.processarCanal({
+      entityType: 'professional',
+      entityId: this.chaveSenhaTemporaria(profissional.id, profissional.senhaTemporaria),
+      notificationType: 'temp_password_professional',
+      channel: 'email',
+      destination: profissional.email,
+      reason: 'Senha temporaria de profissional por email',
+      contextoLog: { entidade: 'profissional', profissionalId: profissional.id },
+      executarEnvio: () => this.emailServico.enviarSenhaTemporaria(
+        profissional.email as string,
+        this.primeiroNomeProfissional(profissional),
+        profissional.senhaTemporaria as string
+      )
+    });
+
+    if (sucesso) {
+      const marcado = await this.profissionalRepo.marcarSenhaTemporariaEnviada(profissional.id);
+      await this.registrarMarcacaoLog('profissional', profissional.id, marcado);
+    }
+
+    return sucesso;
+  }
+
+  private async processarSenhaTemporariaClinica(clinica: Clinica): Promise<boolean> {
+    if (!clinica.email || !clinica.senhaTemporaria) {
+      return false;
+    }
+
+    const sucesso = await this.processarCanal({
+      entityType: 'clinic',
+      entityId: this.chaveSenhaTemporaria(clinica.id, clinica.senhaTemporaria),
+      notificationType: 'temp_password_clinic',
+      channel: 'email',
+      destination: clinica.email,
+      reason: 'Senha temporaria de clinica por email',
+      contextoLog: { entidade: 'clinica', clinicaId: clinica.id },
+      executarEnvio: () => this.emailServico.enviarSenhaTemporaria(
+        clinica.email as string,
+        clinica.nome || 'Clinica',
+        clinica.senhaTemporaria as string
+      )
+    });
+
+    if (sucesso) {
+      const marcado = await this.clinicaRepo.marcarSenhaTemporariaEnviada(clinica.id);
+      await this.registrarMarcacaoLog('clinica', clinica.id, marcado);
+    }
+
+    return sucesso;
+  }
+
+  private async processarPasswordReset(reset: PasswordReset): Promise<boolean> {
+    return this.processarCanal({
+      entityType: 'password_reset',
+      entityId: reset.id,
+      notificationType: 'password_reset',
+      channel: 'email',
+      destination: reset.email,
+      reason: 'Recuperacao de senha por email',
+      contextoLog: { entidade: 'password_reset', passwordResetId: reset.id, email: reset.email },
+      executarEnvio: () => this.emailServico.enviarRecuperacaoSenha(
+        reset.email,
+        this.extrairPrimeiroNomeDoEmail(reset.email),
+        reset.code
+      )
+    });
+  }
+
+  private async processarReminderRecorrente(ocorrencia: ReminderOcorrencia): Promise<boolean> {
+    return this.processarCanal({
+      entityType: 'reminder',
+      entityId: ocorrencia.entityId,
+      notificationType: 'recurring_treatment_reminder',
+      channel: 'email',
+      destination: ocorrencia.destination,
+      reason: `Lembrete recorrente de tratamento para ${ocorrencia.dateKey} ${ocorrencia.horario}`,
+      contextoLog: { entidade: 'reminder', reminderId: ocorrencia.reminderId, data: ocorrencia.dateKey, horario: ocorrencia.horario },
+      executarEnvio: () => this.emailServico.enviarLembreteTratamento(
+        ocorrencia.destination,
+        ocorrencia.nomePaciente,
+        ocorrencia.nomeConteudo ? `${ocorrencia.nomeTratamento} - ${ocorrencia.nomeConteudo}` : ocorrencia.nomeTratamento,
+        ocorrencia.nomeProfissional
+      )
+    });
+  }
+
+  private async listarOcorrenciasDue(reminders: Reminder[], inicio: Date, fim: Date): Promise<ReminderOcorrencia[]> {
+    const ocorrencias: ReminderOcorrencia[] = [];
+
+    for (const reminder of reminders) {
+      const horarios = this.normalizarHorarios(reminder.horarios);
+      const diasSemana = this.normalizarDiasSemana(reminder.diasSemana);
+
+      if (horarios.length === 0 || !reminder.paciente.email) {
+        continue;
+      }
+
+      const ocorrenciasReminder = this.calcularOcorrenciasReminder(reminder, horarios, diasSemana, inicio, fim);
+      for (const ocorrencia of ocorrenciasReminder) {
+        if (!await this.auditRepo.existeSucesso('reminder', ocorrencia.entityId, 'recurring_treatment_reminder', 'email')) {
+          ocorrencias.push(ocorrencia);
+        }
+      }
+    }
+
+    return ocorrencias;
+  }
+
+  private calcularOcorrenciasReminder(reminder: Reminder, horarios: string[], diasSemana: number[] | null, inicio: Date, fim: Date): ReminderOcorrencia[] {
+    const ocorrencias: ReminderOcorrencia[] = [];
+    const inicioLocal = this.obterPartesTimezone(inicio);
+    const fimLocal = this.obterPartesTimezone(fim);
+    const datas = Array.from(new Set([inicioLocal.dateKey, fimLocal.dateKey]));
+
+    for (const dateKey of datas) {
+      const partesData = this.obterPartesTimezone(this.construirDataRepresentativa(dateKey));
+      if (reminder.tipo === 'SPECIFIC_DAYS' && diasSemana && !diasSemana.includes(partesData.weekdayIndex)) {
+        continue;
+      }
+
+      for (const horario of horarios) {
+        if (!this.estaNoIntervaloLocal(dateKey, horario, inicioLocal, fimLocal)) {
+          continue;
+        }
+
+        ocorrencias.push({
+          reminderId: reminder.id,
+          entityId: `${reminder.id}:${dateKey}:${horario}`,
+          dateKey,
+          horario,
+          destination: reminder.paciente.email as string,
+          nomePaciente: reminder.paciente.primeiroNome,
+          nomeTratamento: reminder.tratamento.nome,
+          nomeProfissional: reminder.tratamento.profissional.nomeCompleto,
+          nomeConteudo: reminder.conteudo?.titulo ?? null
+        });
+      }
+    }
+
+    return ocorrencias;
+  }
+
+  private normalizarHorarios(horarios: unknown): string[] {
+    if (!Array.isArray(horarios)) {
+      return [];
+    }
+
+    return horarios
+      .filter((horario): horario is string => typeof horario === 'string')
+      .map((horario) => horario.trim().slice(0, 5))
+      .filter((horario) => /^\d{2}:\d{2}$/.test(horario));
+  }
+
+  private normalizarDiasSemana(diasSemana: unknown): number[] | null {
+    if (!Array.isArray(diasSemana)) {
+      return null;
+    }
+
+    const mapa: Record<string, number> = {
+      SUNDAY: 0,
+      MONDAY: 1,
+      TUESDAY: 2,
+      WEDNESDAY: 3,
+      THURSDAY: 4,
+      FRIDAY: 5,
+      SATURDAY: 6,
+      DOMINGO: 0,
+      SEGUNDA: 1,
+      TERCA: 2,
+      QUARTA: 3,
+      QUINTA: 4,
+      SEXTA: 5,
+      SABADO: 6
+    };
+
+    const dias = diasSemana
+      .map((dia): number | null => {
+        if (typeof dia === 'number' && dia >= 0 && dia <= 6) {
+          return dia;
+        }
+
+        if (typeof dia === 'string') {
+          return mapa[dia.trim().toUpperCase()] ?? null;
+        }
+
+        return null;
+      })
+      .filter((dia): dia is number => dia !== null);
+
+    return dias.length > 0 ? dias : null;
+  }
+
+  private obterPartesTimezone(data: Date): ZonedParts {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+      timeZone: ambiente.timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      weekday: 'long'
+    }).formatToParts(data);
+
+    const mapa = Object.fromEntries(partes.map((parte) => [parte.type, parte.value]));
+    const weekdayMap: Record<string, number> = {
+      SUNDAY: 0,
+      MONDAY: 1,
+      TUESDAY: 2,
+      WEDNESDAY: 3,
+      THURSDAY: 4,
+      FRIDAY: 5,
+      SATURDAY: 6
+    };
+
+    return {
+      dateKey: `${mapa.year}-${mapa.month}-${mapa.day}`,
+      timeKey: `${mapa.hour}:${mapa.minute}`,
+      weekdayIndex: weekdayMap[(mapa.weekday ?? '').toUpperCase()] ?? 0
+    };
+  }
+
+  private construirDataRepresentativa(dateKey: string): Date {
+    return new Date(`${dateKey}T12:00:00.000Z`);
+  }
+
+  private estaNoIntervaloLocal(dateKey: string, horario: string, inicio: ZonedParts, fim: ZonedParts): boolean {
+    if (inicio.dateKey === fim.dateKey) {
+      return dateKey === inicio.dateKey && horario >= inicio.timeKey && horario <= fim.timeKey;
+    }
+
+    return (dateKey === inicio.dateKey && horario >= inicio.timeKey)
+      || (dateKey === fim.dateKey && horario <= fim.timeKey);
   }
 
   async ciclo(): Promise<void> {
@@ -297,8 +652,6 @@ export class MensageriaServico {
         if (notificacaoEnviada) {
           const marcado = await this.pacienteRepo.marcarBoasVindasEnviado(paciente.id);
           await this.registrarMarcacaoLog('paciente', paciente.id, marcado);
-        } else {
-          logger.warn({ entidade: 'paciente', pacienteId: paciente.id }, 'Paciente encontrado, mas nenhum canal enviou com sucesso');
         }
       }
 
@@ -354,8 +707,6 @@ export class MensageriaServico {
         if (notificacaoEnviada) {
           const marcado = await this.profissionalRepo.marcarBoasVindasEnviado(profissional.id);
           await this.registrarMarcacaoLog('profissional', profissional.id, marcado);
-        } else {
-          logger.warn({ entidade: 'profissional', profissionalId: profissional.id }, 'Profissional encontrado, mas nenhum canal enviou com sucesso');
         }
       }
 
@@ -417,9 +768,38 @@ export class MensageriaServico {
         if (notificacaoEnviada) {
           const marcado = await this.tratamentoRepo.marcarTratamentoNotificado(tratamento.id);
           await this.registrarMarcacaoLog('tratamento', tratamento.id, marcado);
-        } else {
-          logger.warn({ entidade: 'tratamento', tratamentoId: tratamento.id }, 'Tratamento encontrado, mas nenhum canal enviou com sucesso');
         }
+      }
+
+      const pacientesSenha = await this.pacienteRepo.buscarComSenhaTemporariaAtualizadaApos(this.watermarkISO);
+      logger.info({ total: pacientesSenha.length }, 'Pacientes com senha temporaria encontrados');
+      for (const paciente of pacientesSenha) {
+        await this.processarSenhaTemporariaPaciente(paciente);
+      }
+
+      const profissionaisSenha = await this.profissionalRepo.buscarComSenhaTemporariaAtualizadaApos(this.watermarkISO);
+      logger.info({ total: profissionaisSenha.length }, 'Profissionais com senha temporaria encontrados');
+      for (const profissional of profissionaisSenha) {
+        await this.processarSenhaTemporariaProfissional(profissional);
+      }
+
+      const clinicasSenha = await this.clinicaRepo.buscarComSenhaTemporariaAtualizadaApos(this.watermarkISO);
+      logger.info({ total: clinicasSenha.length }, 'Clinicas com senha temporaria encontradas');
+      for (const clinica of clinicasSenha) {
+        await this.processarSenhaTemporariaClinica(clinica);
+      }
+
+      const resets = await this.passwordResetRepo.buscarPendentesApos(this.watermarkISO);
+      logger.info({ total: resets.length }, 'Password resets pendentes encontrados');
+      for (const reset of resets) {
+        await this.processarPasswordReset(reset);
+      }
+
+      const reminders = await this.reminderRepo.listarAtivos();
+      const ocorrenciasDue = await this.listarOcorrenciasDue(reminders, this.obterJanelaInicial(), inicioCiclo);
+      logger.info({ total: ocorrenciasDue.length }, 'Ocorrencias de reminders recorrentes encontradas');
+      for (const ocorrencia of ocorrenciasDue) {
+        await this.processarReminderRecorrente(ocorrencia);
       }
 
       this.watermarkISO = new Date().toISOString();

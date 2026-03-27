@@ -154,4 +154,99 @@ export class EmailServico {
       };
     }
   }
+
+  async enviarSenhaTemporaria(destino: string, primeiroNome: string, senhaTemporaria: string): Promise<EnvioResultado> {
+    if (!this.estaConfigurado()) {
+      this.avisarNaoConfigurado();
+      return {
+        status: 'skipped',
+        reason: 'SMTP nao configurado'
+      };
+    }
+
+    try {
+      const html = `
+        <div style="font-family: Arial; padding: 20px; border-radius: 8px; background-color: #f9f9f9;">
+          <h1>Ola ${primeiroNome}!</h1>
+          <p>Sua conta foi criada ou atualizada com sucesso no Trataz.</p>
+          <p>Use a senha temporaria abaixo para fazer seu proximo acesso:</p>
+          <p><strong>Email:</strong> ${destino}</p>
+          <p><strong>Senha temporaria:</strong> ${senhaTemporaria}</p>
+          <p>Por seguranca, recomendamos trocar essa senha apos entrar na plataforma.</p>
+        </div>
+      `;
+
+      const mail = await transportador.sendMail({
+        from: ambiente.smtp.de,
+        to: destino,
+        subject: 'Trataz - Suas credenciais de acesso',
+        html
+      });
+
+      logger.info({ mensagemId: mail.messageId }, 'Email de senha temporaria enviado');
+      return {
+        status: 'success',
+        reason: 'Email de senha temporaria enviado com sucesso',
+        providerMessageId: mail.messageId
+      };
+    } catch (erro: unknown) {
+      const errorMessage = erro instanceof Error ? erro.message : 'Falha desconhecida ao enviar email';
+      logger.error({ erro, destino }, 'Falha ao enviar email de senha temporaria');
+      return {
+        status: 'failed',
+        reason: 'Falha no envio de email de senha temporaria',
+        errorMessage
+      };
+    }
+  }
+
+  async enviarRecuperacaoSenha(destino: string, primeiroNome: string, codigo: string): Promise<EnvioResultado> {
+    if (!this.estaConfigurado()) {
+      this.avisarNaoConfigurado();
+      return {
+        status: 'skipped',
+        reason: 'SMTP nao configurado'
+      };
+    }
+
+    try {
+      const resetLink = `${ambiente.frontendUrl.replace(/\/$/, '')}/forgot-password?code=${encodeURIComponent(codigo)}&email=${encodeURIComponent(destino)}`;
+      const html = `
+        <div style="font-family: Arial; padding: 20px; border-radius: 8px; background-color: #f9f9f9;">
+          <h1>Ola ${primeiroNome}!</h1>
+          <p>Voce solicitou a recuperacao de senha da sua conta no Trataz.</p>
+          <p>
+            <a href="${resetLink}" style="display: inline-block; padding: 10px 20px; border-radius: 4px; color: #fff; background-color: #4CAF50; text-decoration: none;">
+              Redefinir senha
+            </a>
+          </p>
+          <p>Se preferir, copie e cole este link no navegador:</p>
+          <p>${resetLink}</p>
+          <p>Se voce nao solicitou essa recuperacao, ignore este email.</p>
+        </div>
+      `;
+
+      const mail = await transportador.sendMail({
+        from: ambiente.smtp.de,
+        to: destino,
+        subject: 'Recuperacao de senha - Trataz',
+        html
+      });
+
+      logger.info({ mensagemId: mail.messageId }, 'Email de recuperacao de senha enviado');
+      return {
+        status: 'success',
+        reason: 'Email de recuperacao de senha enviado com sucesso',
+        providerMessageId: mail.messageId
+      };
+    } catch (erro: unknown) {
+      const errorMessage = erro instanceof Error ? erro.message : 'Falha desconhecida ao enviar email';
+      logger.error({ erro, destino }, 'Falha ao enviar email de recuperacao de senha');
+      return {
+        status: 'failed',
+        reason: 'Falha no envio de email de recuperacao de senha',
+        errorMessage
+      };
+    }
+  }
 }

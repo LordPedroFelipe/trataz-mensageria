@@ -221,6 +221,52 @@ Tipo de notificacao na auditoria:
 
 - `treatment_reminder`
 
+### 4. Senha temporaria
+
+Eventos de negocio:
+
+- paciente com `tempPassword` atualizada
+- profissional com `tempPassword` atualizada
+- clinica com `tempPassword` atualizada
+
+Canais:
+
+- Email
+
+Tipos de notificacao na auditoria:
+
+- `temp_password_patient`
+- `temp_password_professional`
+- `temp_password_clinic`
+
+### 5. Recuperacao de senha
+
+Evento de negocio:
+
+- novo registro em `password_resets`
+
+Canais:
+
+- Email
+
+Tipo de notificacao na auditoria:
+
+- `password_reset`
+
+### 6. Reminder recorrente
+
+Evento de negocio:
+
+- ocorrencia elegivel na tabela `Reminder`
+
+Canais:
+
+- Email
+
+Tipo de notificacao na auditoria:
+
+- `recurring_treatment_reminder`
+
 ## Canais de envio
 
 ### Email
@@ -269,6 +315,13 @@ O servico pode usar:
 - `DATABASE_URL`
 - ou configuracao separada com `DB_HOST`, `DB_PORT`, `DB_USUARIO`, `DB_SENHA`, `DB_NOME`
 
+Tabelas monitoradas alem das iniciais:
+
+- `Clinic`
+- `password_resets`
+- `Reminder`
+- `Content`
+
 Observacoes:
 
 - `DATABASE_URL` tem prioridade no setup atual
@@ -296,6 +349,8 @@ Se preferir gerar o SQL manualmente antes de rodar em STG, eu posso montar tambe
 
 - `PORTA`
 - `NIVEL_LOG`
+- `FRONTEND_URL`
+- `APP_TIMEZONE`
 
 ### Banco
 
@@ -370,7 +425,7 @@ Exemplos por parametro:
 
 ```bash
 curl "http://localhost:3000/mensageria/auditoria?limit=10"
-```
+``` 
 
 - `entityType`
 
@@ -418,6 +473,26 @@ Retorno:
 
 - lista das ultimas tentativas registradas
 - status, canal, destino, motivo, providerMessageId e erro quando existir
+
+## Endpoints operacionais
+
+### Executar ciclo imediatamente
+
+- `POST /mensageria/processar`
+
+### Enviar recuperacao de senha por id
+
+- `POST /mensageria/password-reset/:id/enviar`
+
+### Enviar senha temporaria por entidade
+
+- `POST /mensageria/temp-password/:entityType/:id/enviar`
+
+Valores de `entityType`:
+
+- `patient`
+- `professional`
+- `clinic`
 
 ## Como testar sem disparar mensagem real
 

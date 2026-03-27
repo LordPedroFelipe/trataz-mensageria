@@ -79,6 +79,9 @@ Fluxos implementados:
 1. boas-vindas para paciente
 2. boas-vindas para profissional
 3. lembrete de tratamento
+4. envio de senha temporaria para paciente, profissional e clinica
+5. recuperacao de senha por email
+6. lembretes recorrentes baseados na tabela `Reminder`
 
 Regra geral do worker:
 
@@ -193,6 +196,18 @@ curl "http://localhost:3000/mensageria/dry-run"
 ### Auditoria
 
 `GET /mensageria/auditoria`
+
+### Processar ciclo manualmente
+
+`POST /mensageria/processar`
+
+### Enviar email de recuperacao de senha
+
+`POST /mensageria/password-reset/:id/enviar`
+
+### Enviar senha temporaria por entidade
+
+`POST /mensageria/temp-password/:entityType/:id/enviar`
 
 Consulta o historico de tentativas registradas na `MessageDispatchAudit`.
 
@@ -313,6 +328,8 @@ Exemplo resumido:
 PORT=3000
 PORTA=3000
 NIVEL_LOG=info
+FRONTEND_URL=https://www.trataz.com.br
+APP_TIMEZONE=America/Sao_Paulo
 DATABASE_URL=mysql://usuario:senha@host:3306/banco
 DB_SYNC=false
 WORKER_ATIVO=true
@@ -335,6 +352,8 @@ TWILIO_WHATSAPP_ORIGEM=whatsapp:+14155238886
 - `PORT`: porta HTTP injetada pela plataforma, como Heroku
 - `PORTA`: fallback para execucao local
 - `NIVEL_LOG`: nivel do logger Pino
+- `FRONTEND_URL`: base usada no link de recuperacao de senha
+- `APP_TIMEZONE`: timezone usado para reminders recorrentes
 
 #### Banco
 
@@ -460,6 +479,9 @@ O projeto ja possui:
 - integracao com MySQL via TypeORM
 - envio de email via SMTP
 - envio de WhatsApp via Twilio
+- envio de senha temporaria por email
+- envio de recuperacao de senha por email
+- leitura de reminders recorrentes da tabela `Reminder`
 - dry-run operacional
 - auditoria propria de tentativas
 - bloqueio de reenvio por sucesso anterior

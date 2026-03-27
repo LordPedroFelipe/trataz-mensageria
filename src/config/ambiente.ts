@@ -10,6 +10,8 @@ const portaBanco = databaseUrlValida?.port
 export const ambiente = {
   porta: Number(process.env.PORT ?? process.env.PORTA ?? 3000),
   nivelLog: process.env.NIVEL_LOG ?? 'info',
+  frontendUrl: process.env.FRONTEND_URL ?? 'https://www.trataz.com.br',
+  timezone: process.env.APP_TIMEZONE ?? 'America/Sao_Paulo',
   databaseUrl,
   sincronizarBanco: (process.env.DB_SYNC ?? 'false').toLowerCase() === 'true',
   db: {
