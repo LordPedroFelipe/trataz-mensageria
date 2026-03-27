@@ -8,7 +8,7 @@ const portaBanco = databaseUrlValida?.port
   : Number(process.env.DB_PORT ?? 3306);
 
 export const ambiente = {
-  porta: Number(process.env.PORTA ?? 3000),
+  porta: Number(process.env.PORT ?? process.env.PORTA ?? 3000),
   nivelLog: process.env.NIVEL_LOG ?? 'info',
   databaseUrl,
   sincronizarBanco: (process.env.DB_SYNC ?? 'false').toLowerCase() === 'true',

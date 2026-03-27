@@ -7,6 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
+    "heroku-postbuild": "npm run build",
     "typeorm": "ts-node ./node_modules/typeorm/cli.js -d src/config/data-source.ts",
     "lint": "eslint ."
   },

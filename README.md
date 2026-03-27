@@ -310,6 +310,7 @@ npm run lint
 Exemplo resumido:
 
 ```env
+PORT=3000
 PORTA=3000
 NIVEL_LOG=info
 DATABASE_URL=mysql://usuario:senha@host:3306/banco
@@ -331,7 +332,8 @@ TWILIO_WHATSAPP_ORIGEM=whatsapp:+14155238886
 
 #### Aplicacao
 
-- `PORTA`: porta HTTP da API
+- `PORT`: porta HTTP injetada pela plataforma, como Heroku
+- `PORTA`: fallback para execucao local
 - `NIVEL_LOG`: nivel do logger Pino
 
 #### Banco
