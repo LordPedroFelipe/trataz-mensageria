@@ -449,6 +449,7 @@ curl "http://localhost:3000/mensageria/auditoria?entityType=patient&entityId=123
 A documentacao funcional detalhada de notificacoes esta em:
 
 - [docs/NOTIFICACOES.md](/c:/Users/pfsou/Projetos/mensageria-typeorm/mensageria-typeorm/docs/NOTIFICACOES.md:1)
+- [docs/DEPLOY_HEROKU.md](/c:/Users/pfsou/Projetos/mensageria-typeorm/mensageria-typeorm/docs/DEPLOY_HEROKU.md:1)
 
 ## Status Atual
 

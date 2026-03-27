@@ -509,3 +509,9 @@ Hoje este servico faz tres tipos de notificacao:
 Os disparos acontecem a partir da leitura do banco da aplicacao principal.
 A tabela `MessageDispatchAudit` e a fonte de verdade para tentativas e para bloqueio de reenvio por canal.
 Os canais atuais sao email e WhatsApp.
+
+## Operacao e deploy
+
+Para procedimentos de deploy, Heroku, pipeline, ativacao segura do worker e troca do servico legado, consulte:
+
+- [`docs/DEPLOY_HEROKU.md`](/c:/Users/pfsou/Projetos/mensageria-typeorm/mensageria-typeorm/docs/DEPLOY_HEROKU.md:1)
