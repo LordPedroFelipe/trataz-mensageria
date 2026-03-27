@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import path from 'path';
 import { DataSource } from 'typeorm';
 import { ambiente } from './ambiente';
 import { Paciente } from '../dominio/entidades/Paciente';
@@ -15,7 +16,7 @@ export const AppDataSource = new DataSource({
   password: ambiente.db.senha,
   database: ambiente.db.nome,
   entities: [Paciente, Profissional, Tratamento, MessageDispatchAudit],
-  migrations: ['src/infra/migracoes/*.ts'],
+  migrations: [path.join(__dirname, '..', 'infra', 'migracoes', '*.{js,ts}')],
   synchronize: ambiente.sincronizarBanco,
   logging: false
 });
