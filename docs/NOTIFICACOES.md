@@ -414,6 +414,8 @@ Endpoint:
 Query params suportados hoje:
 
 - `limit`
+- `dateFrom`
+- `dateTo`
 - `entityType`
 - `entityId`
 - `channel`
@@ -449,6 +451,12 @@ curl "http://localhost:3000/mensageria/auditoria?channel=email"
 
 ```bash
 curl "http://localhost:3000/mensageria/auditoria?status=success"
+```
+
+- `dateFrom` e `dateTo`
+
+```bash
+curl "http://localhost:3000/mensageria/auditoria?dateFrom=2026-03-01T00:00:00.000Z&dateTo=2026-03-27T23:59:59.999Z"
 ```
 
 Exemplo:

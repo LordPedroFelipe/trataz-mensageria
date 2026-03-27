@@ -16,6 +16,8 @@ export class MensageriaControlador {
   async historico(req: Request, res: Response) {
     const limitParam = Number(req.query.limit ?? 100);
     const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 500) : 100;
+    const dateFrom = this.parseDateQuery(req.query.dateFrom);
+    const dateTo = this.parseDateQuery(req.query.dateTo);
     const entityType = typeof req.query.entityType === 'string' && this.entityTypes.includes(req.query.entityType as EntityType)
       ? req.query.entityType as EntityType
       : undefined;
@@ -31,6 +33,8 @@ export class MensageriaControlador {
 
     const resultado = await this.mensageriaServico.listarHistorico({
       limit,
+      dateFrom,
+      dateTo,
       entityType,
       entityId,
       channel,
@@ -81,5 +85,14 @@ export class MensageriaControlador {
     }
 
     res.status(202).json({ ok: true, message: 'Senha temporaria processada' });
+  }
+
+  private parseDateQuery(value: Request['query'][string]): Date | undefined {
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      return undefined;
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
   }
 }

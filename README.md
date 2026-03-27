@@ -214,6 +214,8 @@ Consulta o historico de tentativas registradas na `MessageDispatchAudit`.
 Query params suportados:
 
 - `limit`
+- `dateFrom`
+- `dateTo`
 - `entityType`
 - `entityId`
 - `channel`
@@ -239,6 +241,10 @@ curl "http://localhost:3000/mensageria/auditoria?channel=email&status=success"
 
 ```bash
 curl "http://localhost:3000/mensageria/auditoria?entityType=treatment&status=failed&limit=50"
+```
+
+```bash
+curl "http://localhost:3000/mensageria/auditoria?dateFrom=2026-03-01T00:00:00.000Z&dateTo=2026-03-27T23:59:59.999Z&channel=email&status=failed"
 ```
 
 Valores aceitos:
@@ -461,6 +467,12 @@ curl "http://localhost:3000/mensageria/auditoria?limit=50"
 
 ```bash
 curl "http://localhost:3000/mensageria/auditoria?entityType=patient&entityId=123&channel=email&status=success"
+```
+
+### Consultar auditoria por periodo
+
+```bash
+curl "http://localhost:3000/mensageria/auditoria?dateFrom=2026-03-01T00:00:00.000Z&dateTo=2026-03-27T23:59:59.999Z&limit=100"
 ```
 
 ## Documentacao Complementar
