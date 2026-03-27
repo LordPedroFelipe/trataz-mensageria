@@ -13,6 +13,8 @@ const transportador = nodemailer.createTransport({
   }
 });
 
+const remetenteFormatado = `"Trataz - Contato" <${ambiente.smtp.de}>`;
+
 export class EmailServico {
   private avisoConfiguracaoEmitido = false;
 
@@ -51,7 +53,7 @@ export class EmailServico {
       `;
 
       const mail = await transportador.sendMail({
-        from: ambiente.smtp.de,
+        from: remetenteFormatado,
         to: destino,
         subject: 'Bem-vindo(a) ao Trataz!',
         html
@@ -91,7 +93,7 @@ export class EmailServico {
       `;
 
       const mail = await transportador.sendMail({
-        from: ambiente.smtp.de,
+        from: remetenteFormatado,
         to: destino,
         subject: 'Bem-vindo(a) ao Trataz (Profissional)',
         html
@@ -132,7 +134,7 @@ export class EmailServico {
       `;
 
       const mail = await transportador.sendMail({
-        from: ambiente.smtp.de,
+        from: remetenteFormatado,
         to: destino,
         subject: 'Lembrete do Tratamento - Trataz',
         html
@@ -177,7 +179,7 @@ export class EmailServico {
       `;
 
       const mail = await transportador.sendMail({
-        from: ambiente.smtp.de,
+        from: remetenteFormatado,
         to: destino,
         subject: 'Trataz - Suas credenciais de acesso',
         html
@@ -227,7 +229,7 @@ export class EmailServico {
       `;
 
       const mail = await transportador.sendMail({
-        from: ambiente.smtp.de,
+        from: remetenteFormatado,
         to: destino,
         subject: 'Recuperacao de senha - Trataz',
         html
