@@ -21,6 +21,8 @@ export interface ListarHistoricoInput {
   entityId?: string;
   channel?: CanalNotificacao;
   status?: StatusDispatch;
+  dateFrom?: Date;
+  dateTo?: Date;
 }
 
 export class MessageDispatchAuditRepositorio {
@@ -81,6 +83,14 @@ export class MessageDispatchAuditRepositorio {
 
     if (input.status) {
       queryBuilder.andWhere('audit.status = :status', { status: input.status });
+    }
+
+    if (input.dateFrom) {
+      queryBuilder.andWhere('audit.attemptedAt >= :dateFrom', { dateFrom: input.dateFrom });
+    }
+
+    if (input.dateTo) {
+      queryBuilder.andWhere('audit.attemptedAt <= :dateTo', { dateTo: input.dateTo });
     }
 
     return queryBuilder.getMany();

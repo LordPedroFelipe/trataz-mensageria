@@ -79,6 +79,9 @@ Fluxos implementados:
 1. boas-vindas para paciente
 2. boas-vindas para profissional
 3. lembrete de tratamento
+4. envio de senha temporaria para paciente, profissional e clinica
+5. recuperacao de senha por email
+6. lembretes recorrentes baseados na tabela `Reminder`
 
 Regra geral do worker:
 
@@ -194,11 +197,25 @@ curl "http://localhost:3000/mensageria/dry-run"
 
 `GET /mensageria/auditoria`
 
+### Processar ciclo manualmente
+
+`POST /mensageria/processar`
+
+### Enviar email de recuperacao de senha
+
+`POST /mensageria/password-reset/:id/enviar`
+
+### Enviar senha temporaria por entidade
+
+`POST /mensageria/temp-password/:entityType/:id/enviar`
+
 Consulta o historico de tentativas registradas na `MessageDispatchAudit`.
 
 Query params suportados:
 
 - `limit`
+- `dateFrom`
+- `dateTo`
 - `entityType`
 - `entityId`
 - `channel`
@@ -224,6 +241,10 @@ curl "http://localhost:3000/mensageria/auditoria?channel=email&status=success"
 
 ```bash
 curl "http://localhost:3000/mensageria/auditoria?entityType=treatment&status=failed&limit=50"
+```
+
+```bash
+curl "http://localhost:3000/mensageria/auditoria?dateFrom=2026-03-01T00:00:00.000Z&dateTo=2026-03-27T23:59:59.999Z&channel=email&status=failed"
 ```
 
 Valores aceitos:
@@ -313,6 +334,8 @@ Exemplo resumido:
 PORT=3000
 PORTA=3000
 NIVEL_LOG=info
+FRONTEND_URL=https://www.trataz.com.br
+APP_TIMEZONE=America/Sao_Paulo
 DATABASE_URL=mysql://usuario:senha@host:3306/banco
 DB_SYNC=false
 WORKER_ATIVO=true
@@ -326,6 +349,12 @@ EMAIL_DE=contato@trataz.com
 TWILIO_SID=
 TWILIO_TOKEN=
 TWILIO_WHATSAPP_ORIGEM=whatsapp:+14155238886
+TWILIO_WHATSAPP_DESTINO_INTERNO=
+TWILIO_TEMPLATE_BOAS_VINDAS=HXe85ea5a2198c839ce4dba28eddbc1a30
+TWILIO_TEMPLATE_CREDENCIAIS=HX5b2bb5fe737c37468c2aab13001014a0
+TWILIO_TEMPLATE_NOTIFICACAO_INTERNA=HXccce1658c6598b76325ec7d990115452
+TWILIO_TEMPLATE_TRATAMENTO_NOVO=HX915b8fea222af037ab408fff177d65e5
+TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO=HX0ef4ee34246eca8200dada1b987bd79b
 ```
 
 ### Variaveis principais
@@ -335,6 +364,8 @@ TWILIO_WHATSAPP_ORIGEM=whatsapp:+14155238886
 - `PORT`: porta HTTP injetada pela plataforma, como Heroku
 - `PORTA`: fallback para execucao local
 - `NIVEL_LOG`: nivel do logger Pino
+- `FRONTEND_URL`: base usada no link de recuperacao de senha
+- `APP_TIMEZONE`: timezone usado para reminders recorrentes
 
 #### Banco
 
@@ -365,6 +396,12 @@ TWILIO_WHATSAPP_ORIGEM=whatsapp:+14155238886
 - `TWILIO_SID`
 - `TWILIO_TOKEN`
 - `TWILIO_WHATSAPP_ORIGEM`
+- `TWILIO_WHATSAPP_DESTINO_INTERNO`: telefone opcional da Trataz para receber template interno de novo usuario
+- `TWILIO_TEMPLATE_BOAS_VINDAS`
+- `TWILIO_TEMPLATE_CREDENCIAIS`
+- `TWILIO_TEMPLATE_NOTIFICACAO_INTERNA`
+- `TWILIO_TEMPLATE_TRATAMENTO_NOVO`
+- `TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO`
 
 ## Migracoes
 
@@ -444,12 +481,19 @@ curl "http://localhost:3000/mensageria/auditoria?limit=50"
 curl "http://localhost:3000/mensageria/auditoria?entityType=patient&entityId=123&channel=email&status=success"
 ```
 
+### Consultar auditoria por periodo
+
+```bash
+curl "http://localhost:3000/mensageria/auditoria?dateFrom=2026-03-01T00:00:00.000Z&dateTo=2026-03-27T23:59:59.999Z&limit=100"
+```
+
 ## Documentacao Complementar
 
 A documentacao funcional detalhada de notificacoes esta em:
 
 - [docs/NOTIFICACOES.md](/c:/Users/pfsou/Projetos/mensageria-typeorm/mensageria-typeorm/docs/NOTIFICACOES.md:1)
 - [docs/DEPLOY_HEROKU.md](/c:/Users/pfsou/Projetos/mensageria-typeorm/mensageria-typeorm/docs/DEPLOY_HEROKU.md:1)
+- [docs/OPERACAO_AMBIENTES.md](/c:/Users/pfsou/Projetos/mensageria-typeorm/mensageria-typeorm/docs/OPERACAO_AMBIENTES.md:1)
 
 ## Status Atual
 
@@ -460,6 +504,9 @@ O projeto ja possui:
 - integracao com MySQL via TypeORM
 - envio de email via SMTP
 - envio de WhatsApp via Twilio
+- envio de senha temporaria por email
+- envio de recuperacao de senha por email
+- leitura de reminders recorrentes da tabela `Reminder`
 - dry-run operacional
 - auditoria propria de tentativas
 - bloqueio de reenvio por sucesso anterior

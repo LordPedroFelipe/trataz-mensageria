@@ -12,8 +12,27 @@ export class ProfissionalRepositorio {
       .getMany();
   }
 
+  async buscarComSenhaTemporariaAtualizadaApos(dataIso: string): Promise<Profissional[]> {
+    const data = new Date(dataIso);
+    return AppDataSource.getRepository(Profissional)
+      .createQueryBuilder('p')
+      .where('p.atualizadoEm > :data', { data })
+      .andWhere('p.senhaTemporaria IS NOT NULL')
+      .andWhere('p.email IS NOT NULL')
+      .getMany();
+  }
+
+  async buscarPorId(id: number): Promise<Profissional | null> {
+    return AppDataSource.getRepository(Profissional).findOne({ where: { id } });
+  }
+
   async marcarBoasVindasEnviado(id: number): Promise<boolean> {
     logger.warn({ entidade: 'profissional', profissionalId: id }, 'Schema atual de Professional nao possui coluna de controle de notificacao; auditoria sera a fonte de verdade do envio');
+    return false;
+  }
+
+  async marcarSenhaTemporariaEnviada(id: number): Promise<boolean> {
+    logger.warn({ entidade: 'profissional', profissionalId: id }, 'Schema atual de Professional nao possui coluna de controle de envio; auditoria sera a fonte de verdade');
     return false;
   }
 }
