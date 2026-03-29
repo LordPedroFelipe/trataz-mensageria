@@ -32,7 +32,15 @@ export const ambiente = {
   twilio: {
     sid: process.env.TWILIO_SID ?? '',
     token: process.env.TWILIO_TOKEN ?? '',
-    origemWhatsApp: process.env.TWILIO_WHATSAPP_ORIGEM ?? 'whatsapp:+14155238886'
+    origemWhatsApp: process.env.TWILIO_WHATSAPP_ORIGEM ?? 'whatsapp:+14155238886',
+    destinoInternoWhatsApp: process.env.TWILIO_WHATSAPP_DESTINO_INTERNO ?? '',
+    templates: {
+      boasVindas: process.env.TWILIO_TEMPLATE_BOAS_VINDAS ?? 'HXe85ea5a2198c839ce4dba28eddbc1a30',
+      credenciais: process.env.TWILIO_TEMPLATE_CREDENCIAIS ?? 'HX5b2bb5fe737c37468c2aab13001014a0',
+      notificacaoInterna: process.env.TWILIO_TEMPLATE_NOTIFICACAO_INTERNA ?? 'HXccce1658c6598b76325ec7d990115452',
+      tratamentoNovo: process.env.TWILIO_TEMPLATE_TRATAMENTO_NOVO ?? 'HX915b8fea222af037ab408fff177d65e5',
+      lembreteTratamento: process.env.TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO ?? 'HX0ef4ee34246eca8200dada1b987bd79b'
+    }
   },
   worker: {
     ativo: (process.env.WORKER_ATIVO ?? 'true').toLowerCase() === 'true',

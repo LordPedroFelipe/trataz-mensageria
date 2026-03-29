@@ -301,12 +301,19 @@ Configuracao:
 - `TWILIO_SID`
 - `TWILIO_TOKEN`
 - `TWILIO_WHATSAPP_ORIGEM`
+- `TWILIO_WHATSAPP_DESTINO_INTERNO`
+- `TWILIO_TEMPLATE_BOAS_VINDAS`
+- `TWILIO_TEMPLATE_CREDENCIAIS`
+- `TWILIO_TEMPLATE_NOTIFICACAO_INTERNA`
+- `TWILIO_TEMPLATE_TRATAMENTO_NOVO`
+- `TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO`
 
 Comportamento importante:
 
 - se Twilio nao estiver configurado, o servico registra `skipped` na auditoria
 - em sucesso, guarda `providerMessageId` com o `sid`
 - em falha, guarda `errorMessage`
+- para evitar erro `63016` fora da janela de 24h, os envios principais usam templates aprovados da Twilio com `contentSid`
 
 ## Banco de dados
 
@@ -381,6 +388,12 @@ Se preferir gerar o SQL manualmente antes de rodar em STG, eu posso montar tambe
 - `TWILIO_SID`
 - `TWILIO_TOKEN`
 - `TWILIO_WHATSAPP_ORIGEM`
+- `TWILIO_WHATSAPP_DESTINO_INTERNO`
+- `TWILIO_TEMPLATE_BOAS_VINDAS`
+- `TWILIO_TEMPLATE_CREDENCIAIS`
+- `TWILIO_TEMPLATE_NOTIFICACAO_INTERNA`
+- `TWILIO_TEMPLATE_TRATAMENTO_NOVO`
+- `TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO`
 
 ## Dry-run
 

@@ -641,12 +641,14 @@ export class MensageriaServico {
             destination: destinoWhatsapp,
             reason: 'Boas-vindas de paciente por WhatsApp',
             contextoLog: { entidade: 'paciente', pacienteId: paciente.id },
-            executarEnvio: () => this.whatsappServico.enviarBoasVindasWhatsApp(
-              paciente.telefone as string,
-              paciente.email ?? '',
+            executarEnvio: () => this.whatsappServico.enviarBoasVindasWhatsApp({
+              paraWhatsApp: paciente.telefone as string,
+              email: paciente.email ?? '',
               primeiroNome,
-              paciente.senhaTemporaria ?? undefined
-            )
+              sobrenome: paciente.sobrenome,
+              senhaTemporaria: paciente.senhaTemporaria ?? undefined,
+              tipoUsuario: 'Paciente'
+            })
           }) || notificacaoEnviada;
         }
 
@@ -697,12 +699,13 @@ export class MensageriaServico {
             destination: destinoWhatsapp,
             reason: 'Boas-vindas de profissional por WhatsApp',
             contextoLog: { entidade: 'profissional', profissionalId: profissional.id },
-            executarEnvio: () => this.whatsappServico.enviarBoasVindasWhatsApp(
-              profissional.telefone as string,
-              profissional.email ?? '',
+            executarEnvio: () => this.whatsappServico.enviarBoasVindasWhatsApp({
+              paraWhatsApp: profissional.telefone as string,
+              email: profissional.email ?? '',
               primeiroNome,
-              profissional.senhaTemporaria ?? undefined
-            )
+              senhaTemporaria: profissional.senhaTemporaria ?? undefined,
+              tipoUsuario: 'Profissional'
+            })
           }) || notificacaoEnviada;
         }
 
@@ -759,10 +762,9 @@ export class MensageriaServico {
             destination: destinoWhatsapp,
             reason: 'Lembrete de tratamento por WhatsApp',
             contextoLog: { entidade: 'tratamento', tratamentoId: tratamento.id },
-            executarEnvio: () => this.whatsappServico.enviarLembreteTratamento(
+            executarEnvio: () => this.whatsappServico.enviarTratamentoNovo(
               telefonePaciente,
               nomePaciente,
-              tratamento.nome,
               nomeProfissional
             )
           }) || notificacaoEnviada;
