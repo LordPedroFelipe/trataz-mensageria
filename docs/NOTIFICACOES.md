@@ -358,6 +358,7 @@ Se preferir gerar o SQL manualmente antes de rodar em STG, eu posso montar tambe
 - `PORTA`
 - `NIVEL_LOG`
 - `FRONTEND_URL`
+- `CORS_ORIGINS`
 - `APP_TIMEZONE`
 
 ### Banco
