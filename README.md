@@ -346,6 +346,7 @@ SMTP_SEGURO=true
 SMTP_USUARIO=contato@trataz.com
 SMTP_SENHA=senha
 EMAIL_DE=contato@trataz.com
+CORS_ORIGINS=https://trataz-mensageria-stg-22f5b2a430ad.herokuapp.com/
 TWILIO_SID=
 TWILIO_TOKEN=
 TWILIO_WHATSAPP_ORIGEM=whatsapp:+14155238886
@@ -364,6 +365,7 @@ TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO=HX0ef4ee34246eca8200dada1b987bd79b
 - `PORTA`: fallback para execucao local
 - `NIVEL_LOG`: nivel do logger Pino
 - `FRONTEND_URL`: base usada no link de recuperacao de senha
+- `CORS_ORIGINS`: lista separada por virgula com os frontends autorizados a chamar a API
 - `APP_TIMEZONE`: timezone usado para reminders recorrentes
 
 #### Banco
@@ -402,6 +404,7 @@ TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO=HX0ef4ee34246eca8200dada1b987bd79b
 - `TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO`
 
 No WhatsApp, o template de boas-vindas deve incluir tambem as credenciais de acesso quando houver senha temporaria, para o paciente receber uma unica mensagem.
+Esse template deve usar as variaveis `nome`, `email` e `senha`.
 
 ## Migracoes
 

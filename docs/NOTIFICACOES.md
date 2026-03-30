@@ -314,6 +314,7 @@ Comportamento importante:
 - em falha, guarda `errorMessage`
 - para evitar erro `63016` fora da janela de 24h, os envios principais usam templates aprovados da Twilio com `contentSid`
 - o template de boas-vindas do paciente/profissional deve concentrar tambem as credenciais de acesso quando houver senha temporaria, em uma unica mensagem
+- o template `TWILIO_TEMPLATE_BOAS_VINDAS` deve aceitar as variaveis `nome`, `email` e `senha`
 
 ## Banco de dados
 
@@ -357,6 +358,7 @@ Se preferir gerar o SQL manualmente antes de rodar em STG, eu posso montar tambe
 - `PORTA`
 - `NIVEL_LOG`
 - `FRONTEND_URL`
+- `CORS_ORIGINS`
 - `APP_TIMEZONE`
 
 ### Banco

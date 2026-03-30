@@ -148,6 +148,7 @@ Exemplos de apps:
 heroku config:set PORTA=3000 -a NOME-DO-APP
 heroku config:set NIVEL_LOG=info -a NOME-DO-APP
 heroku config:set FRONTEND_URL="https://www.trataz.com.br" -a NOME-DO-APP
+heroku config:set CORS_ORIGINS="https://www.trataz.com.br,https://trataz-frontend-admin-stg.vercel.app" -a NOME-DO-APP
 heroku config:set APP_TIMEZONE="America/Sao_Paulo" -a NOME-DO-APP
 heroku config:set DB_SYNC=false -a NOME-DO-APP
 heroku config:set WORKER_ATIVO=false -a NOME-DO-APP
@@ -484,6 +485,10 @@ Criar ou atualizar uma config var:
 
 ```bash
 heroku config:set NOME_DA_VARIAVEL="valor" -a NOME-DO-APP
+heroku config:set TWILIO_TEMPLATE_BOAS_VINDAS="HXb35efc175a924aade20c32a0b8af7f05" -a trataz-mensageria-stg
+
+heroku config:set TWILIO_TEMPLATE_BOAS_VINDAS="HXb35efc175a924aade20c32a0b8af7f05" -a trataz-mensageria-node
+
 ```
 
 Criar varias config vars:
