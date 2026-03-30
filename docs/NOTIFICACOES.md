@@ -303,7 +303,6 @@ Configuracao:
 - `TWILIO_WHATSAPP_ORIGEM`
 - `TWILIO_WHATSAPP_DESTINO_INTERNO`
 - `TWILIO_TEMPLATE_BOAS_VINDAS`
-- `TWILIO_TEMPLATE_CREDENCIAIS`
 - `TWILIO_TEMPLATE_NOTIFICACAO_INTERNA`
 - `TWILIO_TEMPLATE_TRATAMENTO_NOVO`
 - `TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO`
@@ -314,6 +313,7 @@ Comportamento importante:
 - em sucesso, guarda `providerMessageId` com o `sid`
 - em falha, guarda `errorMessage`
 - para evitar erro `63016` fora da janela de 24h, os envios principais usam templates aprovados da Twilio com `contentSid`
+- o template de boas-vindas do paciente/profissional deve concentrar tambem as credenciais de acesso quando houver senha temporaria, em uma unica mensagem
 
 ## Banco de dados
 
@@ -390,7 +390,6 @@ Se preferir gerar o SQL manualmente antes de rodar em STG, eu posso montar tambe
 - `TWILIO_WHATSAPP_ORIGEM`
 - `TWILIO_WHATSAPP_DESTINO_INTERNO`
 - `TWILIO_TEMPLATE_BOAS_VINDAS`
-- `TWILIO_TEMPLATE_CREDENCIAIS`
 - `TWILIO_TEMPLATE_NOTIFICACAO_INTERNA`
 - `TWILIO_TEMPLATE_TRATAMENTO_NOVO`
 - `TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO`
