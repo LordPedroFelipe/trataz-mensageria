@@ -87,26 +87,20 @@ export class WhatsappServico {
 
     try {
       const sids: string[] = [];
+      const mensagemCredenciais = input.senhaTemporaria
+        ? `Siga as instrucoes:\nEmail: ${input.email} | Senha: ${input.senhaTemporaria}`
+        : '';
 
       const boasVindas = await this.enviarTemplate({
         paraWhatsApp: input.paraWhatsApp,
         contentSid: ambiente.twilio.templates.boasVindas,
-        contentVariables: { nome: input.primeiroNome },
+        contentVariables: {
+          nome: input.primeiroNome,
+          mensagem: mensagemCredenciais
+        },
         motivoLog: 'Template de boas-vindas enviado por WhatsApp'
       });
       sids.push(boasVindas.sid);
-
-      if (input.senhaTemporaria) {
-        const credenciais = await this.enviarTemplate({
-          paraWhatsApp: input.paraWhatsApp,
-          contentSid: ambiente.twilio.templates.credenciais,
-          contentVariables: {
-            mensagem: `Email: ${input.email} | Senha: ${input.senhaTemporaria}`
-          },
-          motivoLog: 'Template de credenciais enviado por WhatsApp'
-        });
-        sids.push(credenciais.sid);
-      }
 
       if (ambiente.twilio.destinoInternoWhatsApp) {
         const notificacaoInterna = await this.enviarTemplate({

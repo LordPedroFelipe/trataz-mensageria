@@ -470,6 +470,8 @@ Ver variaveis de um servico especifico em formato de lista:
 heroku config --app NOME-DO-APP
 heroku config --app NOME-DO-APP
 heroku config --app trataz-mensageria
+heroku config --app trataz-mensageria-stg
+heroku config --app trataz-mensageria-node
 ```
 
 Ler uma config var especifica:
@@ -582,6 +584,7 @@ Logs mensageria producao:
 
 ```bash
 heroku logs --tail -a trataz-mensageria-node
+heroku logs --tail -a trataz-api
 ```
 
 Restart backend STG:
