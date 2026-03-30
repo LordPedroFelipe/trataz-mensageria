@@ -87,16 +87,14 @@ export class WhatsappServico {
 
     try {
       const sids: string[] = [];
-      const mensagemCredenciais = input.senhaTemporaria
-        ? `Siga as instrucoes:\nEmail: ${input.email} | Senha: ${input.senhaTemporaria}`
-        : '';
 
       const boasVindas = await this.enviarTemplate({
         paraWhatsApp: input.paraWhatsApp,
         contentSid: ambiente.twilio.templates.boasVindas,
         contentVariables: {
           nome: input.primeiroNome,
-          mensagem: mensagemCredenciais
+          email: input.email,
+          senha: input.senhaTemporaria ?? ''
         },
         motivoLog: 'Template de boas-vindas enviado por WhatsApp'
       });

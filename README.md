@@ -402,6 +402,7 @@ TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO=HX0ef4ee34246eca8200dada1b987bd79b
 - `TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO`
 
 No WhatsApp, o template de boas-vindas deve incluir tambem as credenciais de acesso quando houver senha temporaria, para o paciente receber uma unica mensagem.
+Esse template deve usar as variaveis `nome`, `email` e `senha`.
 
 ## Migracoes
 
