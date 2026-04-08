@@ -23,6 +23,7 @@ interface EnviarTemplateInput {
 
 export class WhatsappServico {
   private avisoConfiguracaoEmitido = false;
+  private avisoSandboxEmitido = false;
 
   private estaConfigurado(): boolean {
     return Boolean(ambiente.twilio.sid && ambiente.twilio.token && ambiente.twilio.origemWhatsApp);
@@ -32,6 +33,15 @@ export class WhatsappServico {
     if (!this.avisoConfiguracaoEmitido) {
       logger.warn('Twilio nao configurado; envios de WhatsApp serao ignorados');
       this.avisoConfiguracaoEmitido = true;
+    }
+  }
+
+  private avisarOrigemSandbox(): void {
+    if (!this.avisoSandboxEmitido && ambiente.twilio.origemWhatsApp === 'whatsapp:+14155238886') {
+      logger.warn(
+        'TWILIO_WHATSAPP_ORIGEM esta apontando para o sandbox da Twilio; o perfil pode ficar sem o avatar/apresentacao esperados no WhatsApp'
+      );
+      this.avisoSandboxEmitido = true;
     }
   }
 
@@ -55,6 +65,7 @@ export class WhatsappServico {
   }
 
   private async enviarTemplate(input: EnviarTemplateInput): Promise<{ sid: string; destination: string }> {
+    this.avisarOrigemSandbox();
     const destinoNormalizado = this.normalizarDestinoWhatsApp(input.paraWhatsApp);
     const message = await cliente.messages.create({
       from: ambiente.twilio.origemWhatsApp,

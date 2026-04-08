@@ -161,7 +161,7 @@ heroku config:set SMTP_SENHA="SUA_SENHA_DE_APP" -a NOME-DO-APP
 heroku config:set EMAIL_DE="SEU_EMAIL" -a NOME-DO-APP
 heroku config:set TWILIO_SID="" -a NOME-DO-APP
 heroku config:set TWILIO_TOKEN="" -a NOME-DO-APP
-heroku config:set TWILIO_WHATSAPP_ORIGEM="whatsapp:+14155238886" -a NOME-DO-APP
+heroku config:set TWILIO_WHATSAPP_ORIGEM="whatsapp:+554796772094" -a NOME-DO-APP
 ```
 
 ## Migracao da tabela MessageDispatchAudit

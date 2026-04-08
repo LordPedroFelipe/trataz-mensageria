@@ -39,7 +39,7 @@ export const ambiente = {
   twilio: {
     sid: process.env.TWILIO_SID ?? '',
     token: process.env.TWILIO_TOKEN ?? '',
-    origemWhatsApp: process.env.TWILIO_WHATSAPP_ORIGEM ?? 'whatsapp:+14155238886',
+    origemWhatsApp: process.env.TWILIO_WHATSAPP_ORIGEM ?? 'whatsapp:+554796772094',
     destinoInternoWhatsApp: process.env.TWILIO_WHATSAPP_DESTINO_INTERNO ?? '',
     templates: {
       boasVindas: process.env.TWILIO_TEMPLATE_BOAS_VINDAS ?? 'HXe85ea5a2198c839ce4dba28eddbc1a30',
