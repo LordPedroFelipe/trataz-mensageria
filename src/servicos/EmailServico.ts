@@ -18,6 +18,11 @@ const remetenteFormatado = `"Trataz - Contato" <${ambiente.smtp.de}>`;
 export class EmailServico {
   private avisoConfiguracaoEmitido = false;
 
+  private construirPasswordSetupLink(token: string): string {
+    const baseUrl = ambiente.frontendUrl.replace(/\/+$/, '');
+    return `${baseUrl}/nova-senha?token=${encodeURIComponent(token)}`;
+  }
+
   private estaConfigurado(): boolean {
     return Boolean(ambiente.smtp.host && ambiente.smtp.usuario && ambiente.smtp.senha && ambiente.smtp.de);
   }
@@ -29,7 +34,7 @@ export class EmailServico {
     }
   }
 
-  async enviarBoasVindasPaciente(destino: string, primeiroNome: string, _sobrenome: string | null, senhaTemporaria?: string | null): Promise<EnvioResultado> {
+  async enviarBoasVindasPaciente(destino: string, primeiroNome: string, _sobrenome: string | null): Promise<EnvioResultado> {
     if (!this.estaConfigurado()) {
       this.avisarNaoConfigurado();
       return {
@@ -45,9 +50,8 @@ export class EmailServico {
           <p>Seu cadastro foi realizado com sucesso!</p>
           <div style="background-color: #fff; padding: 10px; border-radius: 5px; box-shadow: 0 0 5px rgba(0,0,0,0.1);">
             <p><strong>Email cadastrado:</strong> ${destino}</p>
-            ${senhaTemporaria ? `<p><strong>Senha temporaria:</strong> ${senhaTemporaria}</p>` : ''}
           </div>
-          <p style="margin-top: 15px;">Por seguranca, altere sua senha apos o primeiro acesso.</p>
+          <p style="margin-top: 15px;">Seu acesso sera liberado com o fluxo de onboarding enviado pelos canais configurados.</p>
           <a href="https://trataz.com.br/login" style="display: inline-block; padding: 10px 20px; border-radius: 4px; color: #fff; background-color: #4CAF50; text-decoration: none;">Acessar a plataforma</a>
         </div>
       `;
@@ -76,7 +80,7 @@ export class EmailServico {
     }
   }
 
-  async enviarBoasVindasProfissional(destino: string, primeiroNome: string, senhaTemporaria?: string | null): Promise<EnvioResultado> {
+  async enviarBoasVindasProfissional(destino: string, primeiroNome: string): Promise<EnvioResultado> {
     if (!this.estaConfigurado()) {
       this.avisarNaoConfigurado();
       return {
@@ -89,7 +93,7 @@ export class EmailServico {
       const html = `
         <h1>Bem-vindo(a) ao Trataz, ${primeiroNome}!</h1>
         <p>Seu cadastro como profissional foi concluido.</p>
-        ${senhaTemporaria ? `<p><strong>Senha temporaria:</strong> ${senhaTemporaria}</p>` : ''}
+        <p>Seu acesso sera liberado com o fluxo de onboarding enviado pelos canais configurados.</p>
       `;
 
       const mail = await transportador.sendMail({
@@ -197,6 +201,57 @@ export class EmailServico {
       return {
         status: 'failed',
         reason: 'Falha no envio de email de senha temporaria',
+        errorMessage
+      };
+    }
+  }
+
+  async enviarLinkDefinicaoSenha(destino: string, primeiroNome: string, token: string): Promise<EnvioResultado> {
+    if (!this.estaConfigurado()) {
+      this.avisarNaoConfigurado();
+      return {
+        status: 'skipped',
+        reason: 'SMTP nao configurado'
+      };
+    }
+
+    try {
+      const setupLink = this.construirPasswordSetupLink(token);
+      const html = `
+        <div style="font-family: Arial; padding: 20px; border-radius: 8px; background-color: #f9f9f9;">
+          <h1>Ola ${primeiroNome}!</h1>
+          <p>Seu acesso ao Trataz foi criado com sucesso.</p>
+          <p>Para cadastrar sua senha, clique no botao abaixo:</p>
+          <p>
+            <a href="${setupLink}" style="display: inline-block; padding: 10px 20px; border-radius: 4px; color: #fff; background-color: #4CAF50; text-decoration: none;">
+              Definir minha senha
+            </a>
+          </p>
+          <p>Se preferir, copie e cole este link no navegador:</p>
+          <p>${setupLink}</p>
+          <p>Esse link expira automaticamente. Se ele nao funcionar, solicite um novo acesso.</p>
+        </div>
+      `;
+
+      const mail = await transportador.sendMail({
+        from: remetenteFormatado,
+        to: destino,
+        subject: 'Trataz - Defina sua senha',
+        html
+      });
+
+      logger.info({ mensagemId: mail.messageId }, 'Email de definicao inicial de senha enviado');
+      return {
+        status: 'success',
+        reason: 'Email de definicao inicial de senha enviado com sucesso',
+        providerMessageId: mail.messageId
+      };
+    } catch (erro: unknown) {
+      const errorMessage = erro instanceof Error ? erro.message : 'Falha desconhecida ao enviar email';
+      logger.error({ erro, destino }, 'Falha ao enviar email de definicao inicial de senha');
+      return {
+        status: 'failed',
+        reason: 'Falha no envio de email de definicao inicial de senha',
         errorMessage
       };
     }

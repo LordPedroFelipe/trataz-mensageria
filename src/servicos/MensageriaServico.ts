@@ -67,6 +67,15 @@ interface ReminderOcorrencia {
   nomeConteudo: string | null;
 }
 
+interface DestinatarioPasswordSetup {
+  entityType: 'patient' | 'professional' | 'clinic';
+  entityId: number;
+  email: string | null;
+  telefone: string | null;
+  primeiroNome: string;
+  nomeCompleto: string;
+}
+
 interface ZonedParts {
   dateKey: string;
   timeKey: string;
@@ -121,8 +130,22 @@ export class MensageriaServico {
   }
 
   async processarPasswordResetPorId(id: string): Promise<boolean> {
-    const reset = await this.passwordResetRepo.buscarPorId(id);
+    const reset = await this.passwordResetRepo.buscarPasswordResetValidoPorId(id);
     return reset ? this.processarPasswordReset(reset) : false;
+  }
+
+  async processarPasswordSetupPorEntidade(entityType: 'patient' | 'professional' | 'clinic', id: number, passwordResetId: string): Promise<boolean> {
+    const destinatario = await this.buscarDestinatarioPasswordSetup(entityType, id);
+    if (!destinatario) {
+      return false;
+    }
+
+    const passwordSetup = await this.passwordResetRepo.buscarPasswordSetupValidoPorId(passwordResetId);
+    if (!passwordSetup?.token || passwordSetup.entityId !== destinatario.entityId) {
+      return false;
+    }
+
+    return this.processarPasswordSetup(destinatario, passwordSetup);
   }
 
   async processarSenhaTemporariaPorEntidade(entityType: 'patient' | 'professional' | 'clinic', id: number): Promise<boolean> {
@@ -315,6 +338,71 @@ export class MensageriaServico {
     return profissional.nomeCompleto?.split(' ')[0] || 'Profissional';
   }
 
+  private construirPasswordSetupLink(token: string): string {
+    const baseUrl = ambiente.frontendUrl.replace(/\/+$/, '');
+    return `${baseUrl}/nova-senha?token=${encodeURIComponent(token)}`;
+  }
+
+  private obterNotificationTypePasswordSetup(entityType: DestinatarioPasswordSetup['entityType']): Extract<NotificationType, 'password_setup_link_patient' | 'password_setup_link_professional' | 'password_setup_link_clinic'> {
+    if (entityType === 'patient') {
+      return 'password_setup_link_patient';
+    }
+
+    if (entityType === 'professional') {
+      return 'password_setup_link_professional';
+    }
+
+    return 'password_setup_link_clinic';
+  }
+
+  private async buscarDestinatarioPasswordSetup(entityType: 'patient' | 'professional' | 'clinic', id: number): Promise<DestinatarioPasswordSetup | null> {
+    if (entityType === 'patient') {
+      const paciente = await this.pacienteRepo.buscarPorId(id);
+      if (!paciente) {
+        return null;
+      }
+
+      return {
+        entityType,
+        entityId: paciente.id,
+        email: paciente.email,
+        telefone: paciente.telefone,
+        primeiroNome: paciente.primeiroNome || 'Paciente',
+        nomeCompleto: this.nomePaciente(paciente)
+      };
+    }
+
+    if (entityType === 'professional') {
+      const profissional = await this.profissionalRepo.buscarPorId(id);
+      if (!profissional) {
+        return null;
+      }
+
+      return {
+        entityType,
+        entityId: profissional.id,
+        email: profissional.email,
+        telefone: profissional.telefone,
+        primeiroNome: this.primeiroNomeProfissional(profissional),
+        nomeCompleto: profissional.nomeCompleto || 'Profissional'
+      };
+    }
+
+    const clinica = await this.clinicaRepo.buscarPorId(id);
+    if (!clinica) {
+      return null;
+    }
+
+    return {
+      entityType,
+      entityId: clinica.id,
+      email: clinica.email,
+      telefone: clinica.telefone,
+      primeiroNome: clinica.nome || 'Clinica',
+      nomeCompleto: clinica.nome || 'Clinica'
+    };
+  }
+
   private chaveSenhaTemporaria(id: number, senhaTemporaria: string): string {
     return `${id}:${senhaTemporaria}`;
   }
@@ -323,6 +411,63 @@ export class MensageriaServico {
     const prefixo = email.split('@')[0] ?? 'Usuario';
     const normalizado = prefixo.replace(/[._-]+/g, ' ').trim();
     return normalizado.length > 0 ? normalizado : 'Usuario';
+  }
+
+  private async processarPasswordSetup(destinatario: DestinatarioPasswordSetup, passwordSetup: PasswordReset): Promise<boolean> {
+    if (!passwordSetup.token) {
+      logger.warn({ passwordResetId: passwordSetup.id }, 'Password setup sem token nao pode ser enviado');
+      return false;
+    }
+
+    const notificationType = this.obterNotificationTypePasswordSetup(destinatario.entityType);
+    const entityIdAuditoria = passwordSetup.id;
+    const setupLink = this.construirPasswordSetupLink(passwordSetup.token);
+    let envioRealizado = false;
+
+    if (destinatario.email) {
+      envioRealizado = await this.processarCanal({
+        entityType: destinatario.entityType,
+        entityId: entityIdAuditoria,
+        notificationType,
+        channel: 'email',
+        destination: destinatario.email,
+        reason: 'Link de definicao inicial de senha por email',
+        contextoLog: {
+          entidade: destinatario.entityType,
+          entityId: destinatario.entityId,
+          passwordResetId: passwordSetup.id
+        },
+        executarEnvio: () => this.emailServico.enviarLinkDefinicaoSenha(
+          destinatario.email as string,
+          destinatario.primeiroNome,
+          passwordSetup.token as string
+        )
+      }) || envioRealizado;
+    }
+
+    if (destinatario.telefone) {
+      const destinoWhatsapp = this.whatsappServico.normalizarDestinoWhatsApp(destinatario.telefone);
+      envioRealizado = await this.processarCanal({
+        entityType: destinatario.entityType,
+        entityId: entityIdAuditoria,
+        notificationType,
+        channel: 'whatsapp',
+        destination: destinoWhatsapp,
+        reason: 'Link de definicao inicial de senha por WhatsApp',
+        contextoLog: {
+          entidade: destinatario.entityType,
+          entityId: destinatario.entityId,
+          passwordResetId: passwordSetup.id
+        },
+        executarEnvio: () => this.whatsappServico.enviarLinkDefinicaoSenhaWhatsApp({
+          paraWhatsApp: destinatario.telefone as string,
+          primeiroNome: destinatario.primeiroNome,
+          link: setupLink
+        })
+      }) || envioRealizado;
+    }
+
+    return envioRealizado;
   }
 
   private async processarSenhaTemporariaPaciente(paciente: Paciente): Promise<boolean> {
@@ -410,6 +555,13 @@ export class MensageriaServico {
   }
 
   private async processarPasswordReset(reset: PasswordReset): Promise<boolean> {
+    if (!reset.code) {
+      logger.warn({ passwordResetId: reset.id }, 'Password reset sem code nao pode ser enviado');
+      return false;
+    }
+
+    const codigo = reset.code;
+
     return this.processarCanal({
       entityType: 'password_reset',
       entityId: reset.id,
@@ -421,7 +573,7 @@ export class MensageriaServico {
       executarEnvio: () => this.emailServico.enviarRecuperacaoSenha(
         reset.email,
         this.extrairPrimeiroNomeDoEmail(reset.email),
-        reset.code
+        codigo
       )
     });
   }
@@ -625,8 +777,7 @@ export class MensageriaServico {
             executarEnvio: () => this.emailServico.enviarBoasVindasPaciente(
               paciente.email as string,
               primeiroNome,
-              paciente.sobrenome,
-              paciente.senhaTemporaria
+              paciente.sobrenome
             )
           }) || notificacaoEnviada;
         }
@@ -646,7 +797,6 @@ export class MensageriaServico {
               email: paciente.email ?? '',
               primeiroNome,
               sobrenome: paciente.sobrenome,
-              senhaTemporaria: paciente.senhaTemporaria ?? undefined,
               tipoUsuario: 'Paciente'
             })
           }) || notificacaoEnviada;
@@ -683,8 +833,7 @@ export class MensageriaServico {
             contextoLog: { entidade: 'profissional', profissionalId: profissional.id },
             executarEnvio: () => this.emailServico.enviarBoasVindasProfissional(
               profissional.email as string,
-              primeiroNome,
-              profissional.senhaTemporaria
+              primeiroNome
             )
           }) || notificacaoEnviada;
         }
@@ -703,7 +852,6 @@ export class MensageriaServico {
               paraWhatsApp: profissional.telefone as string,
               email: profissional.email ?? '',
               primeiroNome,
-              senhaTemporaria: profissional.senhaTemporaria ?? undefined,
               tipoUsuario: 'Profissional'
             })
           }) || notificacaoEnviada;
