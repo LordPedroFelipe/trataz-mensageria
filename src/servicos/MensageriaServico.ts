@@ -462,6 +462,7 @@ export class MensageriaServico {
         executarEnvio: () => this.whatsappServico.enviarLinkDefinicaoSenhaWhatsApp({
           paraWhatsApp: destinatario.telefone as string,
           primeiroNome: destinatario.primeiroNome,
+          email: destinatario.email as string,
           link: setupLink
         })
       }) || envioRealizado;

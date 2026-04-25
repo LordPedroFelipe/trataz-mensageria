@@ -16,6 +16,7 @@ interface EnviarBoasVindasWhatsAppInput {
 interface EnviarLinkDefinicaoSenhaWhatsAppInput {
   paraWhatsApp: string;
   primeiroNome: string;
+  email: string;
   link: string;
 }
 
@@ -151,6 +152,7 @@ export class WhatsappServico {
         contentSid: ambiente.twilio.templates.passwordSetupLink,
         contentVariables: {
           nome: input.primeiroNome,
+          email: input.email,
           link: input.link
         },
         motivoLog: 'Template de definicao inicial de senha enviado por WhatsApp'
