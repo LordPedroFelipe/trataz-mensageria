@@ -64,6 +64,40 @@ export class MensageriaControlador {
     res.status(202).json({ ok: true, message: 'Email de recuperacao processado' });
   }
 
+  async enviarPasswordSetupLink(req: Request, res: Response) {
+    const entityType = req.params.entityType;
+    const permitidos = ['patient', 'professional', 'clinic'] as const;
+    if (!permitidos.includes(entityType as typeof permitidos[number])) {
+      res.status(400).json({ ok: false, message: 'entityType invalido' });
+      return;
+    }
+
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id) || id <= 0) {
+      res.status(400).json({ ok: false, message: 'Id invalido' });
+      return;
+    }
+
+    const passwordResetId = typeof req.body?.passwordResetId === 'string' ? req.body.passwordResetId.trim() : '';
+    if (!passwordResetId) {
+      res.status(400).json({ ok: false, message: 'passwordResetId obrigatorio' });
+      return;
+    }
+
+    const enviado = await this.mensageriaServico.processarPasswordSetupPorEntidade(
+      entityType as 'patient' | 'professional' | 'clinic',
+      id,
+      passwordResetId
+    );
+
+    if (!enviado) {
+      res.status(404).json({ ok: false, message: 'Entidade ou password setup nao encontrado, invalido ou sem destino para envio' });
+      return;
+    }
+
+    res.status(202).json({ ok: true, message: 'Link de definicao inicial de senha processado' });
+  }
+
   async enviarSenhaTemporaria(req: Request, res: Response) {
     const entityType = req.params.entityType;
     const permitidos = ['patient', 'professional', 'clinic'] as const;

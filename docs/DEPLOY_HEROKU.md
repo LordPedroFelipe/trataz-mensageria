@@ -162,7 +162,11 @@ Twilio:
 ```bash
 heroku config:set TWILIO_SID="AC..." -a trataz-mensageria-node
 heroku config:set TWILIO_TOKEN="..." -a trataz-mensageria-node
-heroku config:set TWILIO_WHATSAPP_ORIGEM="whatsapp:+554796772094" -a trataz-mensageria-node
+heroku config:set TWILIO_WHATSAPP_ORIGEM="whatsapp:+14155238886" -a trataz-mensageria-node
+
+
+heroku config:set TWILIO_TEMPLATE_PASSWORD_SETUP_LINK="HX83c54f3b789f3b7fa11bc94940b72b77" -a trataz-mensageria-stg
+
 ```
 
 ### Carregar usando o `.env` atual

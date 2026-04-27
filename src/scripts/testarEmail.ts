@@ -12,8 +12,7 @@ async function main(): Promise<void> {
   const resultado = await emailServico.enviarBoasVindasPaciente(
     destino,
     'Teste',
-    null,
-    '123456'
+    null
   );
 
   console.log(JSON.stringify({

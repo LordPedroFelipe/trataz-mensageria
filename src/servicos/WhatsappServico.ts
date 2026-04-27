@@ -10,8 +10,15 @@ interface EnviarBoasVindasWhatsAppInput {
   email: string;
   primeiroNome: string;
   sobrenome?: string | null;
-  senhaTemporaria?: string | null;
   tipoUsuario: string;
+}
+
+interface EnviarLinkDefinicaoSenhaWhatsAppInput {
+  paraWhatsApp: string;
+  primeiroNome: string;
+  email: string;
+  link: string;
+  linkComplement: string;
 }
 
 interface EnviarTemplateInput {
@@ -70,7 +77,6 @@ export class WhatsappServico {
     const message = await cliente.messages.create({
       from: ambiente.twilio.origemWhatsApp,
       to: destinoNormalizado,
-      body: '',
       contentSid: input.contentSid,
       contentVariables: input.contentVariables ? JSON.stringify(input.contentVariables) : undefined
     });
@@ -105,7 +111,7 @@ export class WhatsappServico {
         contentVariables: {
           nome: input.primeiroNome,
           email: input.email,
-          senha: input.senhaTemporaria ?? ''
+          senha: ''
         },
         motivoLog: 'Template de boas-vindas enviado por WhatsApp'
       });
@@ -137,6 +143,44 @@ export class WhatsappServico {
       return {
         status: 'failed',
         reason: 'Falha no envio de WhatsApp de boas-vindas',
+        errorMessage
+      };
+    }
+  }
+
+  async enviarLinkDefinicaoSenhaWhatsApp(input: EnviarLinkDefinicaoSenhaWhatsAppInput): Promise<EnvioResultado> {
+    if (!this.estaConfigurado()) {
+      this.avisarNaoConfigurado();
+      return {
+        status: 'skipped',
+        reason: 'Twilio nao configurado'
+      };
+    }
+
+    try {
+      const resultado = await this.enviarTemplate({
+        paraWhatsApp: input.paraWhatsApp,
+        contentSid: ambiente.twilio.templates.passwordSetupLink,
+        contentVariables: {
+          nome: input.primeiroNome,
+          email: input.email,
+          link: input.link,
+          'link-complement': input.linkComplement
+        },
+        motivoLog: 'Template de definicao inicial de senha enviado por WhatsApp'
+      });
+
+      return {
+        status: 'success',
+        reason: 'WhatsApp de definicao inicial de senha enviado com sucesso',
+        providerMessageId: resultado.sid
+      };
+    } catch (erro: unknown) {
+      const errorMessage = erro instanceof Error ? erro.message : 'Falha desconhecida ao enviar WhatsApp';
+      logger.error({ erro, destino: input.paraWhatsApp }, 'Falha ao enviar WhatsApp de definicao inicial de senha');
+      return {
+        status: 'failed',
+        reason: 'Falha no envio de WhatsApp de definicao inicial de senha',
         errorMessage
       };
     }

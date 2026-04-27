@@ -489,6 +489,11 @@ heroku config:set TWILIO_TEMPLATE_BOAS_VINDAS="HXb35efc175a924aade20c32a0b8af7f0
 
 heroku config:set TWILIO_TEMPLATE_BOAS_VINDAS="HXb35efc175a924aade20c32a0b8af7f05" -a trataz-mensageria-node
 
+
+heroku config:set TWILIO_TEMPLATE_PASSWORD_SETUP_LINK="HX83c54f3b789f3b7fa11bc94940b72b77" -a trataz-mensageria-stg
+
+heroku config:set TWILIO_TEMPLATE_PASSWORD_SETUP_LINK="HX83c54f3b789f3b7fa11bc94940b72b77" -a trataz-mensageria-node
+
 ```
 
 Criar varias config vars:
