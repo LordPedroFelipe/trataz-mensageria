@@ -357,7 +357,7 @@ TWILIO_TOKEN=
 TWILIO_WHATSAPP_ORIGEM=whatsapp:+14155238886
 TWILIO_WHATSAPP_DESTINO_INTERNO=
 TWILIO_TEMPLATE_BOAS_VINDAS=HXe85ea5a2198c839ce4dba28eddbc1a30
-TWILIO_TEMPLATE_PASSWORD_SETUP_LINK=HX173b27a8b51da53d99e03c7ddbb3805e
+TWILIO_TEMPLATE_PASSWORD_SETUP_LINK=HX83c54f3b789f3b7fa11bc94940b72b77
 TWILIO_TEMPLATE_NOTIFICACAO_INTERNA=HXccce1658c6598b76325ec7d990115452
 TWILIO_TEMPLATE_TRATAMENTO_NOVO=HX915b8fea222af037ab408fff177d65e5
 TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO=HX0ef4ee34246eca8200dada1b987bd79b
@@ -410,7 +410,7 @@ TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO=HX0ef4ee34246eca8200dada1b987bd79b
 - `TWILIO_TEMPLATE_TRATAMENTO_NOVO`
 - `TWILIO_TEMPLATE_LEMBRETE_TRATAMENTO`
 
-O template de definicao inicial de senha por WhatsApp deve usar as variaveis `nome`, `email` e `link`.
+O template de definicao inicial de senha por WhatsApp deve usar as variaveis `nome`, `email`, `link` e `link-complement`.
 O template legado de boas-vindas pode continuar usando `nome`, `email` e `senha`, mas a senha agora segue vazia por compatibilidade enquanto o onboarding migra totalmente para link.
 
 ## Migracoes

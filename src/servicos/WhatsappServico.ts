@@ -18,6 +18,7 @@ interface EnviarLinkDefinicaoSenhaWhatsAppInput {
   primeiroNome: string;
   email: string;
   link: string;
+  linkComplement: string;
 }
 
 interface EnviarTemplateInput {
@@ -65,7 +66,6 @@ export class WhatsappServico {
     const message = await cliente.messages.create({
       from: ambiente.twilio.origemWhatsApp,
       to: destinoNormalizado,
-      body: '',
       contentSid: input.contentSid,
       contentVariables: input.contentVariables ? JSON.stringify(input.contentVariables) : undefined
     });
@@ -153,7 +153,8 @@ export class WhatsappServico {
         contentVariables: {
           nome: input.primeiroNome,
           email: input.email,
-          link: input.link
+          link: input.link,
+          'link-complement': input.linkComplement
         },
         motivoLog: 'Template de definicao inicial de senha enviado por WhatsApp'
       });

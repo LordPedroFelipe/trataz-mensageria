@@ -340,7 +340,7 @@ export class MensageriaServico {
 
   private construirPasswordSetupLink(token: string): string {
     const baseUrl = ambiente.frontendUrl.replace(/\/+$/, '');
-    return `${baseUrl}/nova-senha?token=${encodeURIComponent(token)}`;
+    return `${baseUrl}/new-password?token=${encodeURIComponent(token)}`;
   }
 
   private obterNotificationTypePasswordSetup(entityType: DestinatarioPasswordSetup['entityType']): Extract<NotificationType, 'password_setup_link_patient' | 'password_setup_link_professional' | 'password_setup_link_clinic'> {
@@ -413,6 +413,15 @@ export class MensageriaServico {
     return normalizado.length > 0 ? normalizado : 'Usuario';
   }
 
+  private construirPasswordSetupLinkComplement(link: string): string {
+    try {
+      const url = new URL(link);
+      return `${url.pathname.replace(/^\/+/, '')}${url.search}`;
+    } catch {
+      return link.replace(/^https?:\/\/[^/]+\//i, '').replace(/^\/+/, '');
+    }
+  }
+
   private async processarPasswordSetup(destinatario: DestinatarioPasswordSetup, passwordSetup: PasswordReset): Promise<boolean> {
     if (!passwordSetup.token) {
       logger.warn({ passwordResetId: passwordSetup.id }, 'Password setup sem token nao pode ser enviado');
@@ -422,6 +431,7 @@ export class MensageriaServico {
     const notificationType = this.obterNotificationTypePasswordSetup(destinatario.entityType);
     const entityIdAuditoria = passwordSetup.id;
     const setupLink = this.construirPasswordSetupLink(passwordSetup.token);
+    const setupLinkComplement = this.construirPasswordSetupLinkComplement(setupLink);
     let envioRealizado = false;
 
     if (destinatario.email) {
@@ -463,7 +473,8 @@ export class MensageriaServico {
           paraWhatsApp: destinatario.telefone as string,
           primeiroNome: destinatario.primeiroNome,
           email: destinatario.email as string,
-          link: setupLink
+          link: setupLink,
+          linkComplement: setupLinkComplement
         })
       }) || envioRealizado;
     }

@@ -20,7 +20,7 @@ export class EmailServico {
 
   private construirPasswordSetupLink(token: string): string {
     const baseUrl = ambiente.frontendUrl.replace(/\/+$/, '');
-    return `${baseUrl}/nova-senha?token=${encodeURIComponent(token)}`;
+    return `${baseUrl}/new-password?token=${encodeURIComponent(token)}`;
   }
 
   private estaConfigurado(): boolean {
