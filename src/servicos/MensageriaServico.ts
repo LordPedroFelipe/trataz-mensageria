@@ -643,7 +643,9 @@ export class MensageriaServico {
           ocorrencia.email as string,
           ocorrencia.nomePaciente,
           nomeReferencia,
-          ocorrencia.nomeProfissional
+          ocorrencia.nomeProfissional,
+          ocorrencia.treatmentId,
+          ocorrencia.scheduledTime
         )
       }) || envioRealizado;
     }
@@ -994,7 +996,9 @@ export class MensageriaServico {
               emailPaciente,
               nomePaciente,
               tratamento.nome,
-              nomeProfissional
+              nomeProfissional,
+              tratamento.id,
+              null
             )
           }) || notificacaoEnviada;
         }
