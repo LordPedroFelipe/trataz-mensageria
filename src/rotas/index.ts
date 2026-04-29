@@ -13,5 +13,6 @@ rotas.post('/mensageria/processar', (req, res) => void mensageriaCtrl.processarC
 rotas.post('/mensageria/password-reset/:id/enviar', (req, res) => void mensageriaCtrl.enviarPasswordReset(req, res));
 rotas.post('/mensageria/password-setup-link/:entityType/:id/enviar', (req, res) => void mensageriaCtrl.enviarPasswordSetupLink(req, res));
 rotas.post('/mensageria/temp-password/:entityType/:id/enviar', (req, res) => void mensageriaCtrl.enviarSenhaTemporaria(req, res));
+rotas.post('/mensageria/webhooks/twilio/whatsapp', (req, res) => void mensageriaCtrl.receberRespostaWhatsapp(req, res));
 
 export { rotas };

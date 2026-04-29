@@ -1,10 +1,14 @@
 import { Request, Response } from 'express';
 import { MensageriaServico } from '../../servicos/MensageriaServico';
 import { CanalNotificacao, EntityType, StatusDispatch } from '../../compartilhado/tipos/mensageria';
+import { ProcessarRespostaReminderWhatsappServico } from '../../servicos/ProcessarRespostaReminderWhatsappServico';
+import twilio from 'twilio';
+import { ambiente } from '../../config/ambiente';
 
 export class MensageriaControlador {
   private mensageriaServico = new MensageriaServico();
-  private entityTypes: EntityType[] = ['patient', 'professional', 'treatment', 'clinic', 'password_reset', 'reminder'];
+  private respostaReminderServico = new ProcessarRespostaReminderWhatsappServico();
+  private entityTypes: EntityType[] = ['patient', 'professional', 'treatment', 'clinic', 'password_reset', 'reminder', 'reminder_response'];
   private canais: CanalNotificacao[] = ['email', 'whatsapp'];
   private statuses: StatusDispatch[] = ['success', 'failed', 'skipped'];
 
@@ -121,6 +125,33 @@ export class MensageriaControlador {
     res.status(202).json({ ok: true, message: 'Senha temporaria processada' });
   }
 
+  async receberRespostaWhatsapp(req: Request, res: Response) {
+    if (!this.validarAssinaturaTwilio(req)) {
+      res.status(403).send('forbidden');
+      return;
+    }
+
+    const providerMessageId = typeof req.body?.MessageSid === 'string' ? req.body.MessageSid.trim() : '';
+    const body = typeof req.body?.Body === 'string' ? req.body.Body : '';
+    const fromPhone = typeof req.body?.From === 'string' ? req.body.From.trim() : '';
+    const toPhone = typeof req.body?.To === 'string' ? req.body.To.trim() : '';
+
+    if (!providerMessageId || !fromPhone) {
+      res.status(400).send('invalid_payload');
+      return;
+    }
+
+    await this.respostaReminderServico.executar({
+      providerMessageId,
+      fromPhone,
+      toPhone: toPhone || null,
+      rawBody: JSON.stringify(req.body ?? {}),
+      body
+    });
+
+    res.status(200).send('ok');
+  }
+
   private parseDateQuery(value: Request['query'][string]): Date | undefined {
     if (typeof value !== 'string' || value.trim().length === 0) {
       return undefined;
@@ -128,5 +159,23 @@ export class MensageriaControlador {
 
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }
+
+  private validarAssinaturaTwilio(req: Request): boolean {
+    if (!ambiente.twilio.validarAssinaturaWebhook) {
+      return true;
+    }
+
+    const signature = req.header('x-twilio-signature');
+    if (!signature || !ambiente.twilio.token) {
+      return false;
+    }
+
+    const forwardedProto = req.header('x-forwarded-proto');
+    const forwardedHost = req.header('x-forwarded-host');
+    const baseUrl = ambiente.twilio.webhookUrl
+      || `${forwardedProto ?? req.protocol}://${forwardedHost ?? req.get('host')}${req.originalUrl}`;
+
+    return twilio.validateRequest(ambiente.twilio.token, signature, baseUrl, req.body);
   }
 }

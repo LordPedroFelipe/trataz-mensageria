@@ -93,6 +93,45 @@ export class WhatsappServico {
     };
   }
 
+  async enviarMensagemSessao(paraWhatsApp: string, conteudo: string): Promise<EnvioResultado> {
+    if (!this.estaConfigurado()) {
+      this.avisarNaoConfigurado();
+      return {
+        status: 'skipped',
+        reason: 'Twilio nao configurado'
+      };
+    }
+
+    try {
+      this.avisarOrigemSandbox();
+      const destinoNormalizado = this.normalizarDestinoWhatsApp(paraWhatsApp);
+      const message = await cliente.messages.create({
+        from: ambiente.twilio.origemWhatsApp,
+        to: destinoNormalizado,
+        body: conteudo
+      });
+
+      logger.info({
+        sid: message.sid,
+        destinoNormalizado
+      }, 'Mensagem de sessao enviada por WhatsApp');
+
+      return {
+        status: 'success',
+        reason: 'Mensagem de sessao enviada com sucesso por WhatsApp',
+        providerMessageId: message.sid
+      };
+    } catch (erro: unknown) {
+      const errorMessage = erro instanceof Error ? erro.message : 'Falha desconhecida ao enviar WhatsApp';
+      logger.error({ erro, paraWhatsApp }, 'Falha ao enviar mensagem de sessao por WhatsApp');
+      return {
+        status: 'failed',
+        reason: 'Falha no envio de mensagem de sessao por WhatsApp',
+        errorMessage
+      };
+    }
+  }
+
   async enviarBoasVindasWhatsApp(input: EnviarBoasVindasWhatsAppInput): Promise<EnvioResultado> {
     if (!this.estaConfigurado()) {
       this.avisarNaoConfigurado();

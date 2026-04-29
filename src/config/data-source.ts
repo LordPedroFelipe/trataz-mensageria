@@ -10,6 +10,10 @@ import { Profissional } from '../dominio/entidades/Profissional';
 import { Reminder } from '../dominio/entidades/Reminder';
 import { Tratamento } from '../dominio/entidades/Tratamento';
 import { MessageDispatchAudit } from '../dominio/entidades/MessageDispatchAudit';
+import { TreatmentContent } from '../dominio/entidades/TreatmentContent';
+import { ChatConversation } from '../dominio/entidades/ChatConversation';
+import { ChatMessage } from '../dominio/entidades/ChatMessage';
+import { WhatsAppInboundAudit } from '../dominio/entidades/WhatsAppInboundAudit';
 
 export const AppDataSource = new DataSource({
   type: 'mysql',
@@ -19,7 +23,20 @@ export const AppDataSource = new DataSource({
   username: ambiente.db.usuario,
   password: ambiente.db.senha,
   database: ambiente.db.nome,
-  entities: [Clinica, Conteudo, Paciente, PasswordReset, Profissional, Reminder, Tratamento, MessageDispatchAudit],
+  entities: [
+    Clinica,
+    Conteudo,
+    Paciente,
+    PasswordReset,
+    Profissional,
+    Reminder,
+    Tratamento,
+    TreatmentContent,
+    ChatConversation,
+    ChatMessage,
+    MessageDispatchAudit,
+    WhatsAppInboundAudit
+  ],
   migrations: [path.join(__dirname, '..', 'infra', 'migracoes', '*.{js,ts}')],
   synchronize: ambiente.sincronizarBanco,
   logging: false

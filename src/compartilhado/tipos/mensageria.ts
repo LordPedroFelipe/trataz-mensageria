@@ -1,4 +1,4 @@
-export type EntityType = 'patient' | 'professional' | 'treatment' | 'clinic' | 'password_reset' | 'reminder';
+export type EntityType = 'patient' | 'professional' | 'treatment' | 'clinic' | 'password_reset' | 'reminder' | 'reminder_response';
 export type NotificationType =
   | 'welcome_patient'
   | 'welcome_professional'
@@ -10,7 +10,9 @@ export type NotificationType =
   | 'temp_password_professional'
   | 'temp_password_clinic'
   | 'password_reset'
-  | 'recurring_treatment_reminder';
+  | 'recurring_treatment_reminder'
+  | 'reminder_response_ack'
+  | 'reminder_response_invalid';
 export type CanalNotificacao = 'email' | 'whatsapp';
 export type StatusDispatch = 'success' | 'failed' | 'skipped';
 
