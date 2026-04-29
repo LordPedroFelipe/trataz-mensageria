@@ -261,7 +261,14 @@ export class WhatsappServico {
     }
   }
 
-  async enviarLembreteTratamento(paraWhatsApp: string, nomePaciente: string, nomeTratamento: string, nomeProfissional: string): Promise<EnvioResultado> {
+  async enviarLembreteTratamento(
+    paraWhatsApp: string,
+    nomePaciente: string,
+    nomeTratamento: string,
+    nomeProfissional: string,
+    horarioProgramado: string,
+    treatmentId: number
+  ): Promise<EnvioResultado> {
     if (!this.estaConfigurado()) {
       this.avisarNaoConfigurado();
       return {
@@ -276,8 +283,10 @@ export class WhatsappServico {
         contentSid: ambiente.twilio.templates.lembreteTratamento,
         contentVariables: {
           nome: nomePaciente,
+          tratamento: nomeTratamento,
+          horario: horarioProgramado,
           professional: nomeProfissional,
-          modulo: nomeTratamento
+          treatmentId: String(treatmentId)
         },
         motivoLog: 'Template de lembrete de tratamento enviado por WhatsApp'
       });

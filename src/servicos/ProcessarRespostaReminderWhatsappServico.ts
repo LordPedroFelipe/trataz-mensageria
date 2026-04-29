@@ -14,6 +14,8 @@ interface ProcessarRespostaInput {
   toPhone: string | null;
   rawBody: string;
   body: string;
+  buttonPayload?: string | null;
+  buttonText?: string | null;
 }
 
 type ReminderResponseOption = '1' | '2' | '3';
@@ -35,7 +37,7 @@ export class ProcessarRespostaReminderWhatsappServico {
       return { duplicate: true };
     }
 
-    const opcao = this.extrairOpcao(input.body);
+    const opcao = this.extrairOpcao(input.buttonPayload, input.buttonText, input.body);
     const inbound = await this.inboundRepo.criar({
       providerMessageId: input.providerMessageId,
       fromPhone,
@@ -155,23 +157,46 @@ export class ProcessarRespostaReminderWhatsappServico {
     return { duplicate: false };
   }
 
-  private extrairOpcao(body: string): ReminderResponseOption | null {
-    const normalized = String(body || '').trim().toLowerCase();
-    if (!normalized) {
-      return null;
-    }
+  private extrairOpcao(buttonPayload?: string | null, buttonText?: string | null, body?: string | null): ReminderResponseOption | null {
+    const candidatos = [buttonPayload, buttonText, body]
+      .map((valor) => String(valor || '').trim().toLowerCase())
+      .filter(Boolean);
 
-    const firstDigit = normalized.match(/[123]/)?.[0] ?? null;
-    if (firstDigit === '1' || firstDigit === '2' || firstDigit === '3') {
-      return firstDigit;
-    }
+    for (const normalized of candidatos) {
+      if (normalized === 'tratamento_ok') {
+        return '1';
+      }
 
-    if (normalized.includes('nao consegui')) {
-      return '2';
-    }
+      if (normalized === 'tratamento_nao_consegui') {
+        return '2';
+      }
 
-    if (normalized.includes('duvida') || normalized.includes('dúvida')) {
-      return '3';
+      if (normalized === 'tratamento_duvidas') {
+        return '3';
+      }
+
+      const firstDigit = normalized.match(/[123]/)?.[0] ?? null;
+      if (firstDigit === '1' || firstDigit === '2' || firstDigit === '3') {
+        return firstDigit;
+      }
+
+      if (normalized.includes('ja fiz') || normalized.includes('já fiz') || normalized.includes('ok fiz')) {
+        return '1';
+      }
+
+      if (normalized.includes('nao consegui') || normalized.includes('não consegui')) {
+        return '2';
+      }
+
+      if (
+        normalized.includes('tenho duvidas') ||
+        normalized.includes('tenho dúvidas') ||
+        normalized.includes('preciso de ajuda') ||
+        normalized.includes('duvida') ||
+        normalized.includes('dúvida')
+      ) {
+        return '3';
+      }
     }
 
     return null;

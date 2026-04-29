@@ -673,7 +673,9 @@ export class MensageriaServico {
           ocorrencia.telefone as string,
           ocorrencia.nomePaciente,
           nomeReferencia,
-          ocorrencia.nomeProfissional
+          ocorrencia.nomeProfissional,
+          ocorrencia.scheduledTime,
+          ocorrencia.treatmentId
         )
       }) || envioRealizado;
     }

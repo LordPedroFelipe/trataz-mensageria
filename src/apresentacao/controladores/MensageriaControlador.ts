@@ -133,6 +133,8 @@ export class MensageriaControlador {
 
     const providerMessageId = typeof req.body?.MessageSid === 'string' ? req.body.MessageSid.trim() : '';
     const body = typeof req.body?.Body === 'string' ? req.body.Body : '';
+    const buttonPayload = typeof req.body?.ButtonPayload === 'string' ? req.body.ButtonPayload.trim() : '';
+    const buttonText = typeof req.body?.ButtonText === 'string' ? req.body.ButtonText.trim() : '';
     const fromPhone = typeof req.body?.From === 'string' ? req.body.From.trim() : '';
     const toPhone = typeof req.body?.To === 'string' ? req.body.To.trim() : '';
 
@@ -146,7 +148,9 @@ export class MensageriaControlador {
       fromPhone,
       toPhone: toPhone || null,
       rawBody: JSON.stringify(req.body ?? {}),
-      body
+      body,
+      buttonPayload: buttonPayload || null,
+      buttonText: buttonText || null
     });
 
     res.status(200).send('ok');
