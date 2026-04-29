@@ -41,6 +41,8 @@ export const ambiente = {
     token: process.env.TWILIO_TOKEN ?? '',
     origemWhatsApp: process.env.TWILIO_WHATSAPP_ORIGEM ?? 'whatsapp:+554796772094',
     destinoInternoWhatsApp: process.env.TWILIO_WHATSAPP_DESTINO_INTERNO ?? '',
+    webhookUrl: process.env.TWILIO_WEBHOOK_URL ?? '',
+    validarAssinaturaWebhook: (process.env.TWILIO_VALIDAR_ASSINATURA_WEBHOOK ?? 'true').toLowerCase() === 'true',
     templates: {
       boasVindas: process.env.TWILIO_TEMPLATE_BOAS_VINDAS ?? 'HXe85ea5a2198c839ce4dba28eddbc1a30',
       passwordSetupLink: process.env.TWILIO_TEMPLATE_PASSWORD_SETUP_LINK ?? process.env.TWILIO_TEMPLATE_BOAS_VINDAS ?? 'HXe85ea5a2198c839ce4dba28eddbc1a30',

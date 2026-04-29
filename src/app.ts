@@ -6,6 +6,7 @@ import { erroMiddleware } from './compartilhado/middlewares/erroMiddleware';
 import { ambiente } from './config/ambiente';
 
 export const app = express();
+app.set('trust proxy', true);
 
 app.use((req, res, next) => {
   const origem = req.headers.origin;
@@ -29,5 +30,6 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(rotas);
 app.use(erroMiddleware);

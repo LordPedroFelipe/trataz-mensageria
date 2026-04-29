@@ -61,6 +61,29 @@ export class MessageDispatchAuditRepositorio {
     return repositorio.save(registro);
   }
 
+  async buscarUltimoSucessoPorDestino(
+    notificationType: NotificationType,
+    channel: CanalNotificacao,
+    destination: string,
+    attemptedAfter?: Date
+  ): Promise<MessageDispatchAudit | null> {
+    const queryBuilder = AppDataSource.getRepository(MessageDispatchAudit)
+      .createQueryBuilder('audit')
+      .where('audit.notificationType = :notificationType', { notificationType })
+      .andWhere('audit.channel = :channel', { channel })
+      .andWhere('audit.destination = :destination', { destination })
+      .andWhere('audit.status = :status', { status: 'success' })
+      .orderBy('audit.attemptedAt', 'DESC')
+      .addOrderBy('audit.id', 'DESC')
+      .take(1);
+
+    if (attemptedAfter) {
+      queryBuilder.andWhere('audit.attemptedAt >= :attemptedAfter', { attemptedAfter });
+    }
+
+    return queryBuilder.getOne();
+  }
+
   async listarHistorico(input: ListarHistoricoInput = {}): Promise<MessageDispatchAudit[]> {
     const limit = input.limit ?? 100;
     const queryBuilder = AppDataSource.getRepository(MessageDispatchAudit)

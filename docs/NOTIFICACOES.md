@@ -502,6 +502,18 @@ Retorno:
 
 - `POST /mensageria/processar`
 
+### Webhook inbound do WhatsApp
+
+- `POST /mensageria/webhooks/twilio/whatsapp`
+
+Responsabilidade:
+
+- receber respostas estruturadas do paciente ao lembrete recorrente
+- aceitar `1`, `2` ou `3`
+- correlacionar com o ultimo lembrete recorrente enviado por WhatsApp
+- registrar auditoria inbound
+- responder ao paciente por WhatsApp
+
 ### Enviar recuperacao de senha por id
 
 - `POST /mensageria/password-reset/:id/enviar`
@@ -551,6 +563,36 @@ Isso permite:
 6. Consulte `/mensageria/auditoria`.
 
 ## Riscos e cuidados
+
+### Reminder recorrente 30 minutos antes
+
+O reminder recorrente agora deve ser processado com antecedencia de 30 minutos em relacao ao horario salvo em `Reminder.times`.
+
+Comportamento esperado:
+
+- cada horario gera uma ocorrencia propria
+- o envio pode sair por email e WhatsApp
+- o envio no horario exato deixa de ser a referencia do recurring reminder
+- a chave de auditoria continua sendo por ocorrencia e canal
+
+### Respostas estruturadas por WhatsApp
+
+O servico agora pode receber resposta inbound do WhatsApp para lembretes recorrentes:
+
+- `1` = confirmacao de tratamento realizado
+- `2` = nao conseguiu realizar
+- `3` = tem duvidas
+
+Persistencia nova:
+
+- tabela `WhatsAppInboundAudit`
+
+Uso:
+
+- impedir reprocessamento do mesmo `MessageSid`
+- registrar opcao interpretada
+- guardar reminder/treatment/patient correlacionado
+- guardar acao executada e mensagem de resposta
 
 ### Uso com banco de STG
 
