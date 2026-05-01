@@ -32,6 +32,18 @@ export class WhatsappServico {
   private avisoConfiguracaoEmitido = false;
   private avisoSandboxEmitido = false;
 
+  private montarContentVariables(variables?: Record<string, string>): Record<string, string> | undefined {
+    if (!variables) {
+      return undefined;
+    }
+
+    return Object.entries(variables).reduce<Record<string, string>>((acc, [key, value], index) => {
+      acc[String(index + 1)] = value;
+      acc[key] = value;
+      return acc;
+    }, {});
+  }
+
   private estaConfigurado(): boolean {
     return Boolean(ambiente.twilio.sid && ambiente.twilio.token && ambiente.twilio.origemWhatsApp);
   }
@@ -74,17 +86,19 @@ export class WhatsappServico {
   private async enviarTemplate(input: EnviarTemplateInput): Promise<{ sid: string; destination: string }> {
     this.avisarOrigemSandbox();
     const destinoNormalizado = this.normalizarDestinoWhatsApp(input.paraWhatsApp);
+    const contentVariables = this.montarContentVariables(input.contentVariables);
     const message = await cliente.messages.create({
       from: ambiente.twilio.origemWhatsApp,
       to: destinoNormalizado,
       contentSid: input.contentSid,
-      contentVariables: input.contentVariables ? JSON.stringify(input.contentVariables) : undefined
+      contentVariables: contentVariables ? JSON.stringify(contentVariables) : undefined
     });
 
     logger.info({
       sid: message.sid,
       destinoNormalizado,
-      contentSid: input.contentSid
+      contentSid: input.contentSid,
+      contentVariableKeys: contentVariables ? Object.keys(contentVariables) : []
     }, input.motivoLog);
 
     return {
