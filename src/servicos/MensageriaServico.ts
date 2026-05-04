@@ -58,13 +58,19 @@ interface ProcessarCanalInput {
 interface ReminderOcorrencia {
   reminderId: number;
   entityId: string;
-  dateKey: string;
-  horario: string;
-  destination: string;
+  scheduledDateKey: string;
+  scheduledTime: string;
+  dispatchDateKey: string;
+  dispatchTime: string;
+  email: string | null;
+  telefone: string | null;
   nomePaciente: string;
   nomeTratamento: string;
   nomeProfissional: string;
   nomeConteudo: string | null;
+  patientId: number;
+  treatmentId: number;
+  contentId: number | null;
 }
 
 interface DestinatarioPasswordSetup {
@@ -228,7 +234,26 @@ export class MensageriaServico {
 
     const remindersDue = await this.listarOcorrenciasDue(reminders, this.obterJanelaInicial(), new Date());
     for (const ocorrencia of remindersDue) {
-      itens.push({ tipo: 'reminder', id: ocorrencia.entityId, nomeReferencia: ocorrencia.nomeTratamento, canais: ['email'], destinos: { email: ocorrencia.destination, telefone: null }, motivo: `Lembrete recorrente do tratamento para ${ocorrencia.nomePaciente} em ${ocorrencia.dateKey} ${ocorrencia.horario}` });
+      const canais = await this.obterCanaisPendentes(
+        'reminder',
+        ocorrencia.entityId,
+        'recurring_treatment_reminder',
+        ocorrencia.email,
+        ocorrencia.telefone
+      );
+
+      if (canais.length === 0) {
+        continue;
+      }
+
+      itens.push({
+        tipo: 'reminder',
+        id: ocorrencia.entityId,
+        nomeReferencia: ocorrencia.nomeTratamento,
+        canais,
+        destinos: { email: ocorrencia.email, telefone: ocorrencia.telefone },
+        motivo: `Lembrete recorrente 30min antes para ${ocorrencia.nomePaciente} em ${ocorrencia.scheduledDateKey} ${ocorrencia.scheduledTime}`
+      });
     }
 
     return itens;
@@ -591,21 +616,71 @@ export class MensageriaServico {
   }
 
   private async processarReminderRecorrente(ocorrencia: ReminderOcorrencia): Promise<boolean> {
-    return this.processarCanal({
-      entityType: 'reminder',
-      entityId: ocorrencia.entityId,
-      notificationType: 'recurring_treatment_reminder',
-      channel: 'email',
-      destination: ocorrencia.destination,
-      reason: `Lembrete recorrente de tratamento para ${ocorrencia.dateKey} ${ocorrencia.horario}`,
-      contextoLog: { entidade: 'reminder', reminderId: ocorrencia.reminderId, data: ocorrencia.dateKey, horario: ocorrencia.horario },
-      executarEnvio: () => this.emailServico.enviarLembreteTratamento(
-        ocorrencia.destination,
-        ocorrencia.nomePaciente,
-        ocorrencia.nomeConteudo ? `${ocorrencia.nomeTratamento} - ${ocorrencia.nomeConteudo}` : ocorrencia.nomeTratamento,
-        ocorrencia.nomeProfissional
-      )
-    });
+    const nomeReferencia = ocorrencia.nomeConteudo
+      ? `${ocorrencia.nomeTratamento} - ${ocorrencia.nomeConteudo}`
+      : ocorrencia.nomeTratamento;
+    let envioRealizado = false;
+
+    if (ocorrencia.email) {
+      envioRealizado = await this.processarCanal({
+        entityType: 'reminder',
+        entityId: ocorrencia.entityId,
+        notificationType: 'recurring_treatment_reminder',
+        channel: 'email',
+        destination: ocorrencia.email,
+        reason: `Lembrete recorrente de tratamento 30min antes para ${ocorrencia.scheduledDateKey} ${ocorrencia.scheduledTime}`,
+        contextoLog: {
+          entidade: 'reminder',
+          reminderId: ocorrencia.reminderId,
+          patientId: ocorrencia.patientId,
+          treatmentId: ocorrencia.treatmentId,
+          scheduledDate: ocorrencia.scheduledDateKey,
+          scheduledTime: ocorrencia.scheduledTime,
+          dispatchDate: ocorrencia.dispatchDateKey,
+          dispatchTime: ocorrencia.dispatchTime
+        },
+        executarEnvio: () => this.emailServico.enviarLembreteTratamento(
+          ocorrencia.email as string,
+          ocorrencia.nomePaciente,
+          nomeReferencia,
+          ocorrencia.nomeProfissional,
+          ocorrencia.treatmentId,
+          ocorrencia.scheduledTime
+        )
+      }) || envioRealizado;
+    }
+
+    if (ocorrencia.telefone) {
+      const destinoWhatsapp = this.whatsappServico.normalizarDestinoWhatsApp(ocorrencia.telefone);
+      envioRealizado = await this.processarCanal({
+        entityType: 'reminder',
+        entityId: ocorrencia.entityId,
+        notificationType: 'recurring_treatment_reminder',
+        channel: 'whatsapp',
+        destination: destinoWhatsapp,
+        reason: `Lembrete recorrente de tratamento 30min antes por WhatsApp para ${ocorrencia.scheduledDateKey} ${ocorrencia.scheduledTime}`,
+        contextoLog: {
+          entidade: 'reminder',
+          reminderId: ocorrencia.reminderId,
+          patientId: ocorrencia.patientId,
+          treatmentId: ocorrencia.treatmentId,
+          scheduledDate: ocorrencia.scheduledDateKey,
+          scheduledTime: ocorrencia.scheduledTime,
+          dispatchDate: ocorrencia.dispatchDateKey,
+          dispatchTime: ocorrencia.dispatchTime
+        },
+        executarEnvio: () => this.whatsappServico.enviarLembreteTratamento(
+          ocorrencia.telefone as string,
+          ocorrencia.nomePaciente,
+          nomeReferencia,
+          ocorrencia.nomeProfissional,
+          ocorrencia.scheduledTime,
+          ocorrencia.treatmentId
+        )
+      }) || envioRealizado;
+    }
+
+    return envioRealizado;
   }
 
   private async listarOcorrenciasDue(reminders: Reminder[], inicio: Date, fim: Date): Promise<ReminderOcorrencia[]> {
@@ -615,16 +690,12 @@ export class MensageriaServico {
       const horarios = this.normalizarHorarios(reminder.horarios);
       const diasSemana = this.normalizarDiasSemana(reminder.diasSemana);
 
-      if (horarios.length === 0 || !reminder.paciente.email) {
+      if (horarios.length === 0 || (!reminder.paciente.email && !reminder.paciente.telefone)) {
         continue;
       }
 
       const ocorrenciasReminder = this.calcularOcorrenciasReminder(reminder, horarios, diasSemana, inicio, fim);
-      for (const ocorrencia of ocorrenciasReminder) {
-        if (!await this.auditRepo.existeSucesso('reminder', ocorrencia.entityId, 'recurring_treatment_reminder', 'email')) {
-          ocorrencias.push(ocorrencia);
-        }
-      }
+      ocorrencias.push(...ocorrenciasReminder);
     }
 
     return ocorrencias;
@@ -643,20 +714,27 @@ export class MensageriaServico {
       }
 
       for (const horario of horarios) {
-        if (!this.estaNoIntervaloLocal(dateKey, horario, inicioLocal, fimLocal)) {
+        const disparo = this.subtrairMinutosDoHorario(dateKey, horario, 30);
+        if (!this.estaNoIntervaloLocal(disparo.dateKey, disparo.time, inicioLocal, fimLocal)) {
           continue;
         }
 
         ocorrencias.push({
           reminderId: reminder.id,
           entityId: `${reminder.id}:${dateKey}:${horario}`,
-          dateKey,
-          horario,
-          destination: reminder.paciente.email as string,
+          scheduledDateKey: dateKey,
+          scheduledTime: horario,
+          dispatchDateKey: disparo.dateKey,
+          dispatchTime: disparo.time,
+          email: reminder.paciente.email,
+          telefone: reminder.paciente.telefone,
           nomePaciente: reminder.paciente.primeiroNome,
           nomeTratamento: reminder.tratamento.nome,
           nomeProfissional: reminder.tratamento.profissional.nomeCompleto,
-          nomeConteudo: reminder.conteudo?.titulo ?? null
+          nomeConteudo: reminder.conteudo?.titulo ?? null,
+          patientId: reminder.paciente.id,
+          treatmentId: reminder.tratamento.id,
+          contentId: reminder.conteudo?.id ?? null
         });
       }
     }
@@ -746,6 +824,19 @@ export class MensageriaServico {
 
   private construirDataRepresentativa(dateKey: string): Date {
     return new Date(`${dateKey}T12:00:00.000Z`);
+  }
+
+  private subtrairMinutosDoHorario(dateKey: string, horario: string, minutos: number): { dateKey: string; time: string } {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const [hour, minute] = horario.split(':').map(Number);
+    const dataUtc = new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0));
+    dataUtc.setUTCMinutes(dataUtc.getUTCMinutes() - minutos);
+    const iso = dataUtc.toISOString();
+
+    return {
+      dateKey: iso.slice(0, 10),
+      time: iso.slice(11, 16)
+    };
   }
 
   private estaNoIntervaloLocal(dateKey: string, horario: string, inicio: ZonedParts, fim: ZonedParts): boolean {
@@ -907,7 +998,9 @@ export class MensageriaServico {
               emailPaciente,
               nomePaciente,
               tratamento.nome,
-              nomeProfissional
+              nomeProfissional,
+              tratamento.id,
+              null
             )
           }) || notificacaoEnviada;
         }

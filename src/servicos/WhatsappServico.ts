@@ -32,6 +32,18 @@ export class WhatsappServico {
   private avisoConfiguracaoEmitido = false;
   private avisoSandboxEmitido = false;
 
+  private montarContentVariables(variables?: Record<string, string>): Record<string, string> | undefined {
+    if (!variables) {
+      return undefined;
+    }
+
+    return Object.entries(variables).reduce<Record<string, string>>((acc, [key, value], index) => {
+      acc[String(index + 1)] = value;
+      acc[key] = value;
+      return acc;
+    }, {});
+  }
+
   private estaConfigurado(): boolean {
     return Boolean(ambiente.twilio.sid && ambiente.twilio.token && ambiente.twilio.origemWhatsApp);
   }
@@ -74,23 +86,64 @@ export class WhatsappServico {
   private async enviarTemplate(input: EnviarTemplateInput): Promise<{ sid: string; destination: string }> {
     this.avisarOrigemSandbox();
     const destinoNormalizado = this.normalizarDestinoWhatsApp(input.paraWhatsApp);
+    const contentVariables = this.montarContentVariables(input.contentVariables);
     const message = await cliente.messages.create({
       from: ambiente.twilio.origemWhatsApp,
       to: destinoNormalizado,
       contentSid: input.contentSid,
-      contentVariables: input.contentVariables ? JSON.stringify(input.contentVariables) : undefined
+      contentVariables: contentVariables ? JSON.stringify(contentVariables) : undefined
     });
 
     logger.info({
       sid: message.sid,
       destinoNormalizado,
-      contentSid: input.contentSid
+      contentSid: input.contentSid,
+      contentVariableKeys: contentVariables ? Object.keys(contentVariables) : []
     }, input.motivoLog);
 
     return {
       sid: message.sid,
       destination: destinoNormalizado
     };
+  }
+
+  async enviarMensagemSessao(paraWhatsApp: string, conteudo: string): Promise<EnvioResultado> {
+    if (!this.estaConfigurado()) {
+      this.avisarNaoConfigurado();
+      return {
+        status: 'skipped',
+        reason: 'Twilio nao configurado'
+      };
+    }
+
+    try {
+      this.avisarOrigemSandbox();
+      const destinoNormalizado = this.normalizarDestinoWhatsApp(paraWhatsApp);
+      const message = await cliente.messages.create({
+        from: ambiente.twilio.origemWhatsApp,
+        to: destinoNormalizado,
+        body: conteudo
+      });
+
+      logger.info({
+        sid: message.sid,
+        destinoNormalizado
+      }, 'Mensagem de sessao enviada por WhatsApp');
+
+      return {
+        status: 'success',
+        reason: 'Mensagem de sessao enviada com sucesso por WhatsApp',
+        providerMessageId: message.sid
+      };
+    } catch (erro: unknown) {
+      const errorMessage = erro instanceof Error ? erro.message : 'Falha desconhecida ao enviar WhatsApp';
+      logger.error({ erro, paraWhatsApp }, 'Falha ao enviar mensagem de sessao por WhatsApp');
+      return {
+        status: 'failed',
+        reason: 'Falha no envio de mensagem de sessao por WhatsApp',
+        errorMessage
+      };
+    }
   }
 
   async enviarBoasVindasWhatsApp(input: EnviarBoasVindasWhatsAppInput): Promise<EnvioResultado> {
@@ -222,7 +275,14 @@ export class WhatsappServico {
     }
   }
 
-  async enviarLembreteTratamento(paraWhatsApp: string, nomePaciente: string, nomeTratamento: string, nomeProfissional: string): Promise<EnvioResultado> {
+  async enviarLembreteTratamento(
+    paraWhatsApp: string,
+    nomePaciente: string,
+    nomeTratamento: string,
+    nomeProfissional: string,
+    horarioProgramado: string,
+    treatmentId: number
+  ): Promise<EnvioResultado> {
     if (!this.estaConfigurado()) {
       this.avisarNaoConfigurado();
       return {
@@ -237,8 +297,10 @@ export class WhatsappServico {
         contentSid: ambiente.twilio.templates.lembreteTratamento,
         contentVariables: {
           nome: nomePaciente,
+          tratamento: nomeTratamento,
+          horario: horarioProgramado,
           professional: nomeProfissional,
-          modulo: nomeTratamento
+          treatmentId: String(treatmentId)
         },
         motivoLog: 'Template de lembrete de tratamento enviado por WhatsApp'
       });

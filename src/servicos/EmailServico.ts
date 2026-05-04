@@ -23,6 +23,11 @@ export class EmailServico {
     return `${baseUrl}/new-password?token=${encodeURIComponent(token)}`;
   }
 
+  private construirDashboardTratamentoLink(treatmentId: number): string {
+    const baseUrl = ambiente.frontendUrl.replace(/\/+$/, '');
+    return `${baseUrl}/patient-dashboard?treatmentId=${encodeURIComponent(String(treatmentId))}`;
+  }
+
   private estaConfigurado(): boolean {
     return Boolean(ambiente.smtp.host && ambiente.smtp.usuario && ambiente.smtp.senha && ambiente.smtp.de);
   }
@@ -120,7 +125,14 @@ export class EmailServico {
     }
   }
 
-  async enviarLembreteTratamento(destino: string, nomePaciente: string, nomeTratamento: string, nomeProfissional: string): Promise<EnvioResultado> {
+  async enviarLembreteTratamento(
+    destino: string,
+    nomePaciente: string,
+    nomeTratamento: string,
+    nomeProfissional: string,
+    treatmentId: number,
+    horarioProgramado?: string | null
+  ): Promise<EnvioResultado> {
     if (!this.estaConfigurado()) {
       this.avisarNaoConfigurado();
       return {
@@ -130,11 +142,28 @@ export class EmailServico {
     }
 
     try {
+      const tratamentoLink = this.construirDashboardTratamentoLink(treatmentId);
+      const blocoHorario = horarioProgramado
+        ? `<p><strong>Horario:</strong> ${horarioProgramado}</p>`
+        : '';
       const html = `
-        <h1>Ola ${nomePaciente}!</h1>
-        <p>Este e um lembrete do seu tratamento no Trataz.</p>
-        <h2>Tratamento: ${nomeTratamento}</h2>
-        <p>Profissional: ${nomeProfissional}</p>
+        <div style="font-family: Arial, sans-serif; padding: 24px; background-color: #f7f9fc; border-radius: 12px; color: #1f2937;">
+          <h1 style="margin: 0 0 16px; color: #0f766e;">Ola ${nomePaciente}!</h1>
+          <p style="margin: 0 0 16px;">Este e um lembrete do seu tratamento no Trataz.</p>
+          <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 20px;">
+            <p style="margin: 0 0 10px;"><strong>Tratamento:</strong> ${nomeTratamento}</p>
+            ${blocoHorario}
+            <p style="margin: 0;"><strong>Profissional:</strong> ${nomeProfissional}</p>
+          </div>
+          <p style="margin: 0 0 18px;">Clique no botao abaixo para abrir direto os detalhes do seu tratamento.</p>
+          <p style="margin: 0 0 18px;">
+            <a href="${tratamentoLink}" style="display: inline-block; padding: 12px 20px; border-radius: 8px; color: #ffffff; background-color: #0f766e; text-decoration: none; font-weight: 700;">
+              Abrir tratamento
+            </a>
+          </p>
+          <p style="margin: 0; font-size: 14px; color: #6b7280;">Se preferir, copie e cole este link no navegador:</p>
+          <p style="margin: 8px 0 0; font-size: 14px; word-break: break-all; color: #374151;">${tratamentoLink}</p>
+        </div>
       `;
 
       const mail = await transportador.sendMail({

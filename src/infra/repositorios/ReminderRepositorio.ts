@@ -10,7 +10,7 @@ export class ReminderRepositorio {
       .leftJoinAndSelect('r.conteudo', 'conteudo')
       .leftJoinAndSelect('tratamento.profissional', 'profissional')
       .where('r.ativo = :ativo', { ativo: true })
-      .andWhere('paciente.email IS NOT NULL')
+      .andWhere('(paciente.email IS NOT NULL OR paciente.telefone IS NOT NULL)')
       .getMany();
   }
 
